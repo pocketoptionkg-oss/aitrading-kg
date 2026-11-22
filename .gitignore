@@ -14,3 +14,8 @@ desktop.ini
 .env.*
 # Cloudflare wrangler'дин кэши
 .wrangler/
+
+# npm (Cloudflare Pages өзү орнотот)
+node_modules/
+# Cloudflare: локалдык сырлар (ANTHROPIC_API_KEY ж.б.)
+.dev.vars

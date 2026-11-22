@@ -631,8 +631,94 @@
       isTransparent: true,
       displayMode: "adaptive",
       colorTheme: "dark",
-      locale: "ru"
+      locale: "ru",
+      largeChartUrl: chartUrl()   // басканда — өз терезебиз (chartbox.js), TradingView'га кетпейт
     }, { copyright: false, loader: false });
+  }
+
+  /* ---------- Символдун өз терезеси (assets/js/chartbox.js) ----------
+     TradingView виджеттери символ басылганда largeChartUrl'га «?tvwidgetsymbol=…» кошуп өтөт.
+     largeChartUrl = ушул беттин дареги + «#tv» болгондо, өтүү хэш гана болуп калат: бет кайра
+     жүктөлбөйт, биз hashchange'ди кармап, терезени ачабыз. */
+  function chartUrl() { return location.href.split("#")[0] + "#tv"; }
+  function titleFor(sym) {
+    var x = TICKER.filter(function (s) { return s.proName === sym; })[0];
+    return x ? x.title : "";
+  }
+  var cbxP = null;
+  function withChartbox(fn) {
+    if (!cbxP) {
+      cbxP = new Promise(function (res, rej) {
+        var s = document.createElement("script");
+        s.src = "assets/js/chartbox.js";
+        s.onload = function () { window.ATChart ? res(window.ATChart) : rej(); };
+        s.onerror = function () { cbxP = null; rej(); };
+        document.head.appendChild(s);
+      });
+    }
+    cbxP.then(fn).catch(function () { toast(t("js.tv_fail")); });
+  }
+  function openChart(sym, o) {
+    o = o || {};
+    if (!o.title) o.title = titleFor(String(sym).toUpperCase());
+    withChartbox(function (C) { C.open(sym, o); });
+  }
+  /* Көпчүлүк браузерде TradingView largeChartUrl'ду ЖАҢЫ өтмөктө ачат. Ошондо жаңы өтмөк
+     басылган өтмөккө (BroadcastChannel) «ушул символду ач» деп айтат да, өзү жабылат —
+     колдонуучу ошол эле бетте калат. Жооп болбосо (мисалы, шилтеме түз ачылса) — терезе ушул жерде ачылат. */
+  var chartCh = null, lastTvClick = 0;
+  function chartChannel() {
+    if (chartCh === null) { try { chartCh = new BroadcastChannel("aitrading-chart"); } catch (e) { chartCh = false; } }
+    return chartCh;
+  }
+  function chartHandoff(sym) {
+    var c = chartChannel();
+    if (!c || history.length > 1) return Promise.resolve(false);
+    var id = Math.random().toString(36).slice(2);
+    return new Promise(function (res) {
+      var done = false;
+      function on(e) {
+        var d = e.data || {};
+        if (d.type === "ack" && d.id === id) { done = true; c.removeEventListener("message", on); res(true); }
+      }
+      c.addEventListener("message", on);
+      c.postMessage({ type: "open", sym: sym, id: id });
+      setTimeout(function () { if (!done) { c.removeEventListener("message", on); res(false); } }, 700);
+    });
+  }
+  function initChartLinks() {
+    // Басылган өтмөк: TradingView iframe'ин басканда бет «blur» болот, фокус ошол iframe'де
+    window.addEventListener("blur", function () {
+      var a = document.activeElement;
+      if (a && a.tagName === "IFRAME" && /tradingview/i.test(a.src || "")) lastTvClick = Date.now();
+    });
+    var c = chartChannel();
+    if (c) c.addEventListener("message", function (e) {
+      var d = e.data || {};
+      if (d.type === "open" && d.sym && Date.now() - lastTvClick < 10000) {
+        lastTvClick = 0;
+        c.postMessage({ type: "ack", id: d.id });
+        openChart(d.sym, {});
+      }
+    });
+    function route(initial) {
+      var h = location.hash;
+      if (/^#tv\b/.test(h)) {
+        var m = /[?&]tvwidgetsymbol=([^&#]+)/.exec(h);
+        if (m && initial) {
+          var sym = decodeURIComponent(m[1]);
+          chartHandoff(sym).then(function (ok) {
+            if (ok) { window.close(); setTimeout(function () { openChart(sym, { from: "load" }); }, 400); }   // жабылбаса — ушул жерде ачабыз
+            else openChart(sym, { from: "load" });
+          });
+        } else if (m) openChart(decodeURIComponent(m[1]), { from: "tv" });
+        else { try { history.replaceState(null, "", location.pathname + location.search); } catch (e) { /* */ } }
+      } else if (initial && h === "#chart") {
+        withChartbox(function (C) { C.restore(); });
+      }
+    }
+    window.addEventListener("hashchange", function () { route(false); });
+    route(true);
   }
 
   /* ---------- Телефон: тиркеме (PWA) жана билдирмелер ----------
@@ -758,14 +844,18 @@
     devBar();
     applyLang(initialLang(), true);
     initTicker();
+    initChartLinks();
     initPanels();
   }
+
 
   window.AT = {
     t: t,
     lang: function () { return lang; },
     onLang: function (fn) { listeners.push(fn); },
     mountTV: mountTV,
+    chartUrl: chartUrl,
+    openChart: openChart,
     lazy: lazy,
     toast: toast,
     track: track,

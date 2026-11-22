@@ -1,9 +1,9 @@
 /* AITRADING.KG — service worker: телефонго орнотуу (PWA), офлайн кабык жана билдирмелер.
    Маалымат (assets/data/*, биржа API) — ар дайым тармактан; калган файлдар — кэштен тез. */
-var VERSION = "aitrading-v5";
+var VERSION = "aitrading-v6";
 var SHELL = [
   "./", "index.html", "forecast.html", "trends.html", "news.html", "learn.html", "marketing.html", "analyzer.html", "register.html", "tools.html", "security.html", "traders.html",
-  "assets/js/register.js", "assets/js/i18n-more.js", "assets/js/tools.js", "assets/js/security.js", "assets/js/traders.js", "assets/css/pages.css", "assets/js/lessons.js",
+  "assets/js/register.js", "assets/js/i18n-more.js", "assets/js/tools.js", "assets/js/security.js", "assets/js/traders.js", "assets/css/pages.css", "assets/js/lessons.js", "assets/js/chartbox.js", "assets/css/chartbox.css",
   "assets/css/style.css", "assets/js/config.js", "assets/js/i18n.js", "assets/js/main.js", "assets/js/ai-engine.js",
   "assets/js/ai-voice.js", "assets/js/ai-spider.js", "assets/js/ai-analyst.js", "assets/js/ai-page.js", "assets/js/trends.js",
   "assets/js/posts.js", "assets/js/home.js", "assets/js/news.js", "assets/js/analyzer.js", "assets/vendor/lightweight-charts-4.2.0.js",
@@ -25,6 +25,7 @@ self.addEventListener("fetch", function (e) {
   var url = new URL(e.request.url);
   if (e.request.method !== "GET" || url.origin !== location.origin) return;          // биржалар, TradingView — түз
   if (url.pathname.indexOf("/assets/data/") >= 0) return;                                // маалымат — дайыма жаңы
+  if (url.pathname.indexOf("/api/") === 0) return;                                       // ИИ-жардамчы ж.б. — сервер, кэш жок
   if (/\.(mp4|webm|mov)$/i.test(url.pathname)) return;                                   // видео — бөлүктөп жүктөлөт, кэшке салынбайт
   // Тармак биринчи (жаңы версия тез жетсин), болбосо кэш
   e.respondWith(fetch(e.request).then(function (r) {

@@ -1,0 +1,57 @@
+/* Бегущая строканын жана мини-графиктердин өз терезеси (chartbox.js).
+   ПКда — ортодо чакан терезе, телефондо — ылдыйдан чыккан барак. */
+.cbx { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 20px; }
+.cbx[hidden] { display: none; }
+.cbx-back { position: absolute; inset: 0; background: rgba(2, 5, 10, 0.74); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.cbx-win {
+  position: relative; width: min(980px, 100%); max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px);
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 20px;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 204, 21, 0.05);
+  animation: cbxIn 0.2s ease;
+}
+@keyframes cbxIn { from { transform: translateY(14px) scale(0.985); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.cbx-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px 12px; border-bottom: 1px solid var(--line); }
+.cbx-ttl { min-width: 0; flex: 1; }
+.cbx-ttl h2 { margin: 0; font-size: clamp(1.15rem, 3.4vw, 1.45rem); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cbx-ttl h2 small { color: var(--dim); font: 600 0.8rem/1 var(--font-body); margin-left: 8px; letter-spacing: 0.02em; }
+.cbx-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+.cbx-tags:empty { display: none; }
+.cbx-x { flex: none; width: 42px; height: 42px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--card); color: var(--text); font-size: 1.6rem; line-height: 1; cursor: pointer; }
+.cbx-x:hover, .cbx-x:focus-visible { border-color: var(--yellow); outline: none; }
+
+/* flex-колонка: ички блоктор кысылбайт, ашып кетсе терезе ичинде жылдырылат */
+.cbx-body { overflow-y: auto; overscroll-behavior: contain; padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 12px; }
+.cbx-body > * { flex: none; }
+.cbx-info { min-height: 92px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); overflow: hidden; }
+.cbx-info.tv-box { height: auto; }
+
+.cbx-tabs { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); width: max-content; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.cbx-tabs::-webkit-scrollbar { display: none; }
+.cbx-tabs button { border: 0; background: transparent; color: var(--muted); cursor: pointer; font: 700 0.86rem/1 var(--font-head); padding: 10px 14px; border-radius: 9px; white-space: nowrap; }
+.cbx-tabs button[aria-selected="true"] { background: rgba(255, 204, 21, 0.14); color: var(--yellow); }
+.cbx-tabs button[hidden] { display: none; }
+
+.cbx-pane { height: 440px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); overflow: hidden; position: relative; }
+.cbx-pane[hidden] { display: none; }
+
+.cbx-act { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.cbx-act[hidden] { display: none; }
+.cbx-act .btn { flex: 0 1 auto; }
+.cbx-note { margin: 0; color: var(--dim); font-size: 0.8rem; line-height: 1.45; }
+.cbx-note b { color: var(--muted); font-weight: 700; }
+
+/* Телефон: ылдыйдан чыккан барак, график бийигирээк */
+@media (max-width: 640px) {
+  .cbx { padding: 0; place-items: end stretch; }
+  .cbx-win { width: 100%; max-height: 94vh; max-height: 94dvh; border-radius: 20px 20px 0 0; border-bottom: 0; animation-name: cbxUp; }
+  @keyframes cbxUp { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .cbx-head { padding: 12px 12px 10px; }
+  .cbx-head::before { content: ""; position: absolute; top: 6px; left: 50%; width: 40px; height: 4px; margin-left: -20px; border-radius: 4px; background: var(--line-2); }
+  .cbx-body { padding: 10px 10px calc(14px + env(safe-area-inset-bottom)); gap: 10px; }
+  .cbx-tabs { width: 100%; }
+  .cbx-tabs button { flex: 1 0 auto; padding: 9px 10px; font-size: 0.8rem; }
+  .cbx-pane { height: 56vh; height: 56dvh; min-height: 320px; }
+  .cbx-act .btn { flex: 1 1 100%; justify-content: center; }
+}

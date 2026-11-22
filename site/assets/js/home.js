@@ -1,9 +1,9 @@
-/* Башкы бет: анализатордун мини-виджети (алтын). Басканда биздин анализаторго өтөт. */
+/* Башкы бет: анализатордун мини-виджети (алтын). Басканда ушул эле бетте өз терезебиз ачылат (chartbox.js). */
 (function () {
   "use strict";
   var el = document.querySelector("[data-tv-mini]");
   if (!el || !window.AT) return;
-  var analyzerUrl = new URL("analyzer.html", location.href).href;
+  var analyzerUrl = AT.chartUrl ? AT.chartUrl() : new URL("analyzer.html", location.href).href;
   AT.lazy(el, function () {
     AT.mountTV(el, "mini-symbol-overview", {
       symbol: "OANDA:XAUUSD",
