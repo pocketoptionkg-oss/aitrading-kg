@@ -1,0 +1,23 @@
+﻿key;file_ky;text_ky;file_ru;text_ru
+hello;site/assets/audio/ky/hello.mp3;Салам! Мен AITRADING ИИ-аналитигимин. Графикти чогуу талдайлы.;site/assets/audio/ru/hello.mp3;Привет! Я ИИ-аналитик AITRADING. Давайте разберём график вместе.
+load;site/assets/audio/ky/load.mp3;Графикти жүктөп жатам.;site/assets/audio/ru/load.mp3;Загружаю график.
+trend_up;site/assets/audio/ky/trend_up.mp3;Тренд өйдө.;site/assets/audio/ru/trend_up.mp3;Тренд вверх.
+trend_dn;site/assets/audio/ky/trend_dn.mp3;Тренд ылдый.;site/assets/audio/ru/trend_dn.mp3;Тренд вниз.
+trend_flat;site/assets/audio/ky/trend_flat.mp3;Тренд так эмес.;site/assets/audio/ru/trend_flat.mp3;Тренд неясен.
+rsi_low;site/assets/audio/ky/rsi_low.mp3;RSI ашыкча сатылган зонада.;site/assets/audio/ru/rsi_low.mp3;RSI в зоне перепроданности.
+rsi_high;site/assets/audio/ky/rsi_high.mp3;RSI ашыкча сатып алынган зонада.;site/assets/audio/ru/rsi_high.mp3;RSI в зоне перекупленности.
+rsi_mid;site/assets/audio/ky/rsi_mid.mp3;RSI нейтралдуу.;site/assets/audio/ru/rsi_mid.mp3;RSI нейтральный.
+macd_up;site/assets/audio/ky/macd_up.mp3;MACD импульсу өйдө.;site/assets/audio/ru/macd_up.mp3;Импульс MACD вверх.
+macd_dn;site/assets/audio/ky/macd_dn.mp3;MACD импульсу ылдый.;site/assets/audio/ru/macd_dn.mp3;Импульс MACD вниз.
+macd_mix;site/assets/audio/ky/macd_mix.mp3;MACD импульсу басаңдап жатат.;site/assets/audio/ru/macd_mix.mp3;Импульс MACD ослабевает.
+bb_lo;site/assets/audio/ky/bb_lo.mp3;Баа төмөнкү тилкеге жакын.;site/assets/audio/ru/bb_lo.mp3;Цена у нижней полосы.
+bb_hi;site/assets/audio/ky/bb_hi.mp3;Баа жогорку тилкеге жакын.;site/assets/audio/ru/bb_hi.mp3;Цена у верхней полосы.
+bb_mid;site/assets/audio/ky/bb_mid.mp3;Баа диапазондун ортосунда.;site/assets/audio/ru/bb_mid.mp3;Цена в середине диапазона.
+levels;site/assets/audio/ky/levels.mp3;Колдоо жана каршылык деңгээлдерин белгиледим.;site/assets/audio/ru/levels.mp3;Отметил уровни поддержки и сопротивления.
+vol_up;site/assets/audio/ky/vol_up.mp3;Көлөм орточодон жогору.;site/assets/audio/ru/vol_up.mp3;Объём выше среднего.
+vol_dn;site/assets/audio/ky/vol_dn.mp3;Көлөм орточодон төмөн.;site/assets/audio/ru/vol_dn.mp3;Объём ниже среднего.
+ml;site/assets/audio/ky/ml.mp3;Эми ИИ-модель эсептейт.;site/assets/audio/ru/ml.mp3;Теперь считает ИИ-модель.
+done_up;site/assets/audio/ky/done_up.mp3;Прогноз даяр: өсүү ыктымалдыгы бир аз жогору. Бирок бул кепилдик эмес.;site/assets/audio/ru/done_up.mp3;Прогноз готов: вероятность роста немного выше. Но это не гарантия.
+done_dn;site/assets/audio/ky/done_dn.mp3;Прогноз даяр: түшүү ыктымалдыгы бир аз жогору. Бирок бул кепилдик эмес.;site/assets/audio/ru/done_dn.mp3;Прогноз готов: вероятность падения немного выше. Но это не гарантия.
+done_flat;site/assets/audio/ky/done_flat.mp3;Прогноз даяр: азыр так багыт жок, элүүгө элүү. Шашпаңыз.;site/assets/audio/ru/done_flat.mp3;Прогноз готов: сейчас чёткого направления нет, пятьдесят на пятьдесят. Не спешите.
+err;site/assets/audio/ky/err.mp3;Маалымат жүктөлгөн жок.;site/assets/audio/ru/err.mp3;Данные не загрузились.

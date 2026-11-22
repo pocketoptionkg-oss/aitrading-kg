@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="ky">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title data-i18n="meta.title.tools">Рынок куралдары: Коркуу жана ач көздүк индекси, ликвиддүүлүк картасы — AITRADING.KG</title>
+  <meta name="description" data-i18n-attr="content:meta.desc.tools" content="Крипто рыногунун маанайы (Fear &amp; Greed индекси), заказдар китебинин ликвиддүүлүк картасы — «дубалдар» кайда, жана рыноктун жылуулук картасы. Жандуу маалымат, жөнөкөй түшүндүрмө.">
+  <meta name="theme-color" content="#070b12">
+  <link rel="canonical" href="https://aitrading.kg/tools.html">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="assets/img/icon-192.png">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="AITRADING.KG">
+  <meta property="og:title" content="Рынок куралдары — AITRADING.KG">
+  <meta property="og:image" content="https://aitrading.kg/assets/img/og-image.jpg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://api.binance.com" crossorigin>
+  <link rel="preconnect" href="https://api.alternative.me" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:ital,wght@0,600;0,700;0,800;1,800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/pages.css">
+  <script src="assets/js/config.js" defer></script>
+  <script src="assets/js/i18n.js" defer></script>
+  <script src="assets/js/i18n-more.js" defer></script>
+  <script src="assets/js/main.js" defer></script>
+  <script src="assets/js/tools.js" defer></script>
+</head>
+<body data-page="tools">
+  <div data-site-header></div>
+
+  <main id="main">
+    <div class="container page-head">
+      <span class="eyebrow" data-i18n="tl.eyebrow">Куралдар</span>
+      <h1 data-i18n="tl.h1">Рынок куралдары: маанай жана ликвиддүүлүк</h1>
+      <p data-i18n="tl.lead">Эки жөнөкөй курал: рыноктун маанайы (коркуу же ач көздүк) жана заказдар китебиндеги «дубалдар» — ири сатып алуучулар жана сатуучулар кайда күтүп турат. Маалымат жандуу, түшүндүрмө — кыргызча.</p>
+    </div>
+
+    <div class="container">
+      <!-- 1. Fear & Greed -->
+      <section class="tl-card" id="fng">
+        <div class="tl-head">
+          <h2 data-i18n="tl.fng_h">Коркуу жана ач көздүк индекси</h2>
+          <span class="badge badge-yellow" data-i18n="tl.fng_badge">Крипто рыногу · күнүнө 1 жолу</span>
+        </div>
+        <div class="fng" data-fng>
+          <div class="fng-gauge">
+            <svg viewBox="0 0 220 128" aria-hidden="true" data-fng-svg></svg>
+            <div class="fng-val"><b data-fng-num>—</b><span data-fng-cls></span></div>
+          </div>
+          <div class="fng-side">
+            <div class="fng-hist" data-fng-hist></div>
+            <div class="fng-spark"><svg viewBox="0 0 300 70" preserveAspectRatio="none" data-fng-spark aria-hidden="true"></svg><small data-i18n="tl.fng_30">Акыркы 30 күн</small></div>
+          </div>
+        </div>
+        <div class="grid grid-2 tl-explain">
+          <div>
+            <h3 data-i18n="tl.fng_what_h">Бул эмне?</h3>
+            <p data-i18n="tl.fng_what">0дөн 100гө чейинки сан: баанын өзгөрүүсү, соода көлөмү, соцтармактар жана Bitcoin'дин үлүшү сыяктуу маалыматтардан эсептелет. 0 — катуу коркуу (көпчүлүк сатып жатат), 100 — катуу ач көздүк (көпчүлүк шашылып сатып алууда).</p>
+          </div>
+          <div>
+            <h3 data-i18n="tl.fng_how_h">Кантип колдонсо болот?</h3>
+            <p data-i18n="tl.fng_how">Рыноктун маанайын түшүнүү үчүн. «Катуу коркуу» көп учурда баанын көп түшкөнүн көрсөтөт, «катуу ач көздүк» — рынок ысып кеткенин. Бирок бул сигнал эмес: маанай бир нече апта бир жакта калышы мүмкүн.</p>
+          </div>
+        </div>
+        <ul class="fng-scale">
+          <li class="z0"><span data-i18n="tl.z0">Катуу коркуу</span></li>
+          <li class="z1"><span data-i18n="tl.z1">Коркуу</span></li>
+          <li class="z2"><span data-i18n="tl.z2">Нейтралдуу</span></li>
+          <li class="z3"><span data-i18n="tl.z3">Ач көздүк</span></li>
+          <li class="z4"><span data-i18n="tl.z4">Катуу ач көздүк</span></li>
+        </ul>
+        <p class="tl-src"><span data-i18n="tl.fng_src">Маалымат:</span> <a href="https://alternative.me/crypto/fear-and-greed-index/" target="_blank" rel="noopener nofollow">alternative.me</a> · <span data-fng-upd></span></p>
+      </section>
+
+      <!-- 2. Ликвиддүүлүк картасы -->
+      <section class="tl-card" id="liquidity">
+        <div class="tl-head">
+          <h2 data-i18n="tl.liq_h">Ликвиддүүлүк картасы (заказдар китеби)</h2>
+          <span class="badge badge-mint"><i class="live-dot" aria-hidden="true"></i><span data-i18n="tl.live">Жандуу</span> · <span data-liq-cd>15</span> с</span>
+        </div>
+        <div class="liq-bar">
+          <div class="liq-syms" role="group" aria-label="Актив" data-liq-syms></div>
+          <div class="liq-rng" role="group" aria-label="±%">
+            <button type="button" data-rng="0.5">±0.5%</button><button type="button" data-rng="1">±1%</button><button type="button" data-rng="2" aria-pressed="true">±2%</button>
+          </div>
+        </div>
+        <div class="liq-wrap">
+          <div class="liq-map" data-liq-map><p class="liq-wait" data-i18n="tl.loading">Жүктөлүүдө…</p></div>
+          <aside class="liq-info">
+            <div class="liq-price"><small data-i18n="tl.price">Учурдагы баа</small><b data-liq-price>—</b></div>
+            <div class="liq-imb">
+              <small data-i18n="tl.imb">Тең салмак (тандалган аралыкта)</small>
+              <div class="liq-imb-bar"><span class="up" data-imb-buy></span><span class="down" data-imb-sell></span></div>
+              <div class="liq-imb-txt"><span class="up" data-imb-buy-t>—</span><span class="down" data-imb-sell-t>—</span></div>
+            </div>
+            <div class="liq-walls">
+              <small data-i18n="tl.walls">Эң чоң «дубалдар»</small>
+              <ol data-liq-walls></ol>
+            </div>
+          </aside>
+        </div>
+        <div class="grid grid-2 tl-explain">
+          <div>
+            <h3 data-i18n="tl.liq_what_h">Кантип окуу керек?</h3>
+            <p data-i18n="tl.liq_what">Ар бир тилке — ошол баа деңгээлинде күтүп турган заказдардын суммасы (долларда). Жашыл — сатып алуучулар (баадан төмөн), кызыл — сатуучулар (баадан жогору). Узун тилке — «дубал»: баа ал жерде токтоп калышы мүмкүн.</p>
+          </div>
+          <div>
+            <h3 data-i18n="tl.liq_care_h">Этият болуңуз</h3>
+            <p data-i18n="tl.liq_care">Дубалдар бир секундда алынып салынышы мүмкүн (ири оюнчулар рынокту алдаш үчүн коюп, кайра алышат). Бул — учурдагы сүрөт, сигнал эмес. Маалымат Binance'тен алынат (эң ири ликвиддүүлүк); активдер — BingX'те да бар болгондор гана.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Рыноктун жылуулук картасы -->
+      <section class="tl-card" id="heatmap">
+        <div class="tl-head">
+          <h2 data-i18n="tl.hm_h">Рыноктун жылуулук картасы</h2>
+          <span class="badge badge-blue">TradingView</span>
+        </div>
+        <p class="muted" data-i18n="tl.hm_p">Ар бир квадрат — монета: чоңдугу — капитализациясы, түсү — 24 сааттагы өзгөрүү. Рынок бүт бойдон өсүп жатабы же түшүп жатабы — бир караганда көрүнөт.</p>
+        <div class="tl-hm" data-heatmap></div>
+      </section>
+
+      <div class="center-cta" style="margin:8px 0 18px">
+        <a class="btn btn-mint" href="forecast.html"><svg aria-hidden="true"><use href="#i-ai"/></svg><span data-i18n="tl.cta_ai">ИИ-анализге өтүү</span></a>
+      </div>
+      <div class="callout" style="margin:8px 0 48px"><svg aria-hidden="true"><use href="#i-warn"/></svg><p data-i18n="tl.disc">Куралдар рынокту түшүнүүгө жардам берет, бирок келечекти айтпайт. Бул инвестициялык кеңеш же соода сигналы эмес. Соода тобокелдиктүү · 18+</p></div>
+    </div>
+  </main>
+
+  <div data-site-footer></div>
+</body>
+</html>

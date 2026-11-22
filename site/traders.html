@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ky">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title data-i18n="meta.title.traders">Трейдерлердин пикири жана бренддик рамка — AITRADING.KG</title>
+  <meta name="description" data-i18n-attr="content:meta.desc.traders" content="Коомчулуктагы трейдерлердин чыныгы посттору (ник кыскартылган) жана AITRADING.KG рамкасы: скриншотуңузду бренддик сүрөткө айлантып, соцтармакта бөлүшүңүз.">
+  <meta name="theme-color" content="#070b12">
+  <link rel="canonical" href="https://aitrading.kg/traders.html">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="assets/img/icon-192.png">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="AITRADING.KG">
+  <meta property="og:title" content="Трейдерлердин пикири — AITRADING.KG">
+  <meta property="og:image" content="https://aitrading.kg/assets/img/og-image.jpg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:ital,wght@0,600;0,700;0,800;1,800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/pages.css">
+  <script src="assets/js/config.js" defer></script>
+  <script src="assets/js/i18n.js" defer></script>
+  <script src="assets/js/i18n-more.js" defer></script>
+  <script src="assets/js/main.js" defer></script>
+  <script src="assets/js/traders.js" defer></script>
+</head>
+<body data-page="traders">
+  <div data-site-header></div>
+
+  <main id="main">
+    <div class="container page-head">
+      <span class="eyebrow" data-i18n="tr.eyebrow">Коомчулук</span>
+      <h1 data-i18n="trd.h1">Трейдерлердин пикири</h1>
+      <p data-i18n="trd.lead">Биздин коомчулуктагы трейдерлердин чыныгы посттору жана пикирлери. Купуялык үчүн ник кыскартылат. Өз пикириңизди AITRADING рамкасы менен жасап, соцтармакта бөлүшүңүз.</p>
+      <div class="hero-badges">
+        <a class="btn btn-mint btn-sm" href="#frame"><span data-i18n="tr.go_frame">🖼 Рамка жасоо</span></a>
+        <a class="btn btn-ghost btn-sm" href="#send"><span data-i18n="tr.go_send">Пикир жөнөтүү</span></a>
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="callout callout-mint"><svg aria-hidden="true"><use href="#i-info"/></svg><p data-i18n="tr.honest">Биз пикирлерди ойлоп таппайбыз: ар бир пост — чыныгы адамдыкы жана анын макулдугу менен жарыяланат. Пайда же зыян скриншоту — бир адамдын натыйжасы, сиздин натыйжаңызга кепилдик эмес.</p></div>
+
+      <!-- Пикирлер -->
+      <section class="tr-sec" id="feed">
+        <div class="tr-feed-head">
+          <h2 data-i18n="tr.feed_h">Пикирлер</h2>
+          <div class="tr-filter" role="group" aria-label="Фильтр">
+            <button type="button" data-flt="all" aria-pressed="true" data-i18n="tr.f_all">Баары</button>
+            <button type="button" data-flt="bingx" aria-pressed="false">BingX</button>
+            <button type="button" data-flt="binodex" aria-pressed="false">BinoDex</button>
+          </div>
+        </div>
+        <div class="tr-feed" data-feed><p class="liq-wait" data-i18n="tl.loading">Жүктөлүүдө…</p></div>
+      </section>
+
+      <!-- Рамка -->
+      <section class="tr-sec" id="frame">
+        <h2 data-i18n="tr.fr_h">🖼 AITRADING рамкасы: скриншотуңузду бренддик сүрөткө айлантыңыз</h2>
+        <p class="muted" data-i18n="tr.fr_p">Соода же пикир скриншотун тандаңыз, никти жана кыска пикирди жазыңыз. Сүрөт ушул түзмөктө гана иштетилет — эч жакка жүктөлбөйт. Даяр сүрөттү Instagram, TikTok же Telegram'га салыңыз.</p>
+        <div class="fr-wrap">
+          <div class="fr-form">
+            <label class="fr-file">
+              <input type="file" accept="image/*" data-fr-file>
+              <span><b data-i18n="tr.fr_pick">📷 Скриншот тандоо</b><small data-fr-fname data-i18n="tr.fr_none">Сүрөт тандала элек</small></span>
+            </label>
+            <label class="fr-field"><span data-i18n="tr.fr_nick">Ник</span><input type="text" maxlength="24" data-fr-nick placeholder="Trader_KG"></label>
+            <label class="fr-chk"><input type="checkbox" data-fr-mask checked><span data-i18n="tr.fr_mask">Никти кыскартуу (Tr***G)</span></label>
+            <label class="fr-field"><span data-i18n="tr.fr_text">Кыска пикир</span><textarea maxlength="140" rows="3" data-fr-text data-i18n-attr="placeholder:tr.fr_text_ph" placeholder="Мисалы: ИИ-анализ менен демодо машыгып жатам. Шашпай, эрежелер менен."></textarea><small class="fr-count" data-fr-count>0/140</small></label>
+            <div class="fr-row">
+              <label class="fr-field"><span data-i18n="tr.fr_broker">Платформа</span>
+                <select data-fr-broker><option value="">—</option><option value="BingX">BingX</option><option value="BinoDex">BinoDex</option></select>
+              </label>
+              <div class="fr-field"><span data-i18n="tr.fr_format">Формат</span>
+                <div class="fr-fmt" role="group"><button type="button" data-fr-fmt="sq" aria-pressed="true" data-i18n="tr.fr_sq">Квадрат</button><button type="button" data-fr-fmt="st" aria-pressed="false" data-i18n="tr.fr_st">Сторис</button></div>
+              </div>
+            </div>
+            <div class="fr-blur">
+              <b data-i18n="tr.fr_blur_h">🔒 Купуя жерлерди жашыруу</b>
+              <p data-i18n="tr.fr_blur_p">Email, ID, баланс сыяктуу жерлердин үстүнөн сүрөттө манжаңыз же чычкан менен тик бурчтук тартыңыз — ал жер бүдөмүк болот.</p>
+              <button type="button" class="btn btn-ghost btn-sm" data-fr-unblur data-i18n="tr.fr_unblur">Бүдөмүктөрдү тазалоо</button>
+            </div>
+            <div class="fr-actions">
+              <button type="button" class="btn btn-mint" data-fr-dl disabled><span data-i18n="tr.fr_dl">⬇ Сүрөттү жүктөп алуу</span></button>
+              <button type="button" class="btn btn-ghost" data-fr-share hidden><span data-i18n="tr.fr_share">Бөлүшүү</span></button>
+            </div>
+          </div>
+          <div class="fr-prev">
+            <canvas width="1080" height="1080" data-fr-canvas aria-label="Алдын ала көрүү"></canvas>
+            <p class="fr-hint" data-fr-hint data-i18n="tr.fr_hint">Скриншот тандаңыз — алдын ала көрүү ушул жерде чыгат.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Жөнөтүү -->
+      <section class="tr-sec" id="send">
+        <div class="rbot">
+          <h3><svg aria-hidden="true"><use href="#i-tg"/></svg><span data-i18n="tr.send_h">Пикириңизди сайтка чыгаруу</span></h3>
+          <ol class="sc-list">
+            <li data-i18n="tr.send1">Жогорудагы рамка менен сүрөт жасаңыз (же жөн гана скриншот).</li>
+            <li data-i18n="tr.send2">Telegram-ботко «💬 Колдоо» аркылуу жөнөтүңүз жана «сайтка чыгарууга макулмун» деп жазыңыз.</li>
+            <li data-i18n="tr.send3">Админ текшерет: купуя маалымат жашырылган болушу керек. Убада, «кепилдик», жарнама шилтемеси бар посттор чыкпайт.</li>
+          </ol>
+          <div class="center-cta" style="margin-top:12px"><a class="btn btn-mint" data-bot href="#"><svg aria-hidden="true"><use href="#i-tg"/></svg><span data-i18n="sp.bot_go">Ботко кирүү</span></a></div>
+        </div>
+      </section>
+
+      <div class="callout" style="margin:8px 0 48px"><svg aria-hidden="true"><use href="#i-warn"/></svg><p data-i18n="tr.disc">Трейдерлердин пикири — алардын жеке тажрыйбасы, инвестициялык кеңеш эмес. Башкалардын пайдасы сиздин пайдаңызды билдирбейт. Соода тобокелдиктүү · 18+</p></div>
+    </div>
+  </main>
+
+  <div data-site-footer></div>
+</body>
+</html>

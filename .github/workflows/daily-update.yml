@@ -1,0 +1,54 @@
+# Күн сайын маалыматты жаңыртуу / Ежедневное обновление данных
+# 1) BingX'теги активдердин тизмеси жана көлөмдөр (tools/update_bingx.py)
+# 2) ИИ-обзор (tools/ai_posts.py) — репозиторийдин Settings → Secrets → Actions'ка ANTHROPIC_API_KEY кошулса гана
+# Өзгөрүү болсо коммит кылат → Netlify / Cloudflare Pages / GitHub Pages сайтты өзү жаңыртат.
+name: Daily data update
+
+on:
+  schedule:
+    - cron: "0 1 * * *"              # 07:00 Бишкек: маалымат + ИИ-обзор
+    - cron: "30 */2 * * *"           # ар 2 саатта: BingX, акциялар, валюта жуптары (ИИ-анализатор үчүн).
+                                     # Ар бир коммит Cloudflare Pages'те жаңы жыйноо; бекер план — айына ~500, саат сайын (~720) ашып кетет.
+  workflow_dispatch: {}   # кол менен ишке киргизүү: Actions → Daily data update → Run workflow
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: pip install -r tools/requirements.txt
+
+      - name: BingX маалыматы
+        run: python tools/update_bingx.py
+
+      - name: ИИ-обзор
+        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 1 * * *'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python tools/ai_posts.py
+
+      - name: Commit
+        run: |
+          git config user.name "aitrading-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/assets/data/
+          if git diff --cached --quiet; then
+            echo "Өзгөрүү жок"
+          else
+            git commit -m "data: daily update $(date -u +%F)"
+            git push
+          fi

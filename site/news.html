@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ky">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title data-i18n="meta.title.news">Жаңылыктар жана окуялар — AITRADING.KG</title>
+  <meta name="description" data-i18n-attr="content:meta.desc.news" content="Рыноктун башкы жаңылыктары: крипто, валюта, акциялар. Экономикалык календарь — баага таасир эте турган окуялар.">
+  <meta name="theme-color" content="#070b12">
+  <link rel="canonical" href="https://aitrading.kg/news.html">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="assets/img/icon-192.png">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="AITRADING.KG">
+  <meta property="og:title" content="Жаңылыктар — AITRADING.KG">
+  <meta property="og:image" content="https://aitrading.kg/assets/img/og-image.jpg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:ital,wght@0,600;0,700;0,800;1,800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://s3.tradingview.com">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <script src="assets/js/config.js" defer></script>
+  <script src="assets/js/i18n.js" defer></script>
+  <script src="assets/js/main.js" defer></script>
+  <script src="assets/js/news.js" defer></script>
+  <script src="assets/js/posts.js" defer></script>
+</head>
+<body data-page="news">
+  <div data-site-header></div>
+
+  <main id="main">
+    <div class="container page-head">
+      <span class="updated"><span class="dot"></span><span data-i18n="n.live">Жандуу лента · TradingView</span></span>
+      <h1 data-i18n="n.h1">Жаңылыктар жана окуялар</h1>
+      <p data-i18n="n.lead">Рынокко эмне таасир этип жатканын бир жерден көрүңүз. Жаңылыктар орус тилинде, булагы — TradingView жана анын өнөктөштөрү.</p>
+    </div>
+
+    <div class="container">
+      <div class="callout" style="margin-bottom:18px"><svg aria-hidden="true"><use href="#i-info"/></svg><p data-i18n="n.tip">Кеңеш: чоң жаңылык (мисалы, АКШнын пайыздык чени же инфляция) чыкканда баа бир нече мүнөттө кескин өзгөрүшү мүмкүн. Мындай учурда жаңы баштагандарга соода кылбай, күтүп туруу коопсузураак.</p></div>
+
+      <section class="lesson" id="ai-post" data-ai-post="full" style="margin-bottom:18px"></section>
+
+      <div class="grid grid-2" style="align-items:start">
+        <section class="panel">
+          <div class="panel-head">
+            <h2 data-i18n="n.feed">Башкы жаңылыктар</h2>
+            <div class="seg" data-news-tabs>
+              <button type="button" data-feed="all" data-i18n="n.t_all">Баары</button>
+              <button type="button" data-feed="crypto" data-i18n="tab.crypto">Крипто</button>
+              <button type="button" data-feed="forex" data-i18n="tab.fx">Валюталар</button>
+              <button type="button" data-feed="stock" data-i18n="tab.stocks">Акциялар</button>
+            </div>
+          </div>
+          <div class="news-box" data-tv-news></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2 data-i18n="p.calendar">Экономикалык календарь</h2>
+          </div>
+          <p class="clock" style="padding:12px 16px 0;margin:0" data-i18n="n.cal_hint">Маанилүү окуялар: пайыздык чендер, инфляция, жумушсуздук. Убакыт — сиздин түзмөгүңүздүн убактысы.</p>
+          <div class="news-box" data-tv-events></div>
+        </section>
+      </div>
+
+      <div class="tiles" style="margin-top:24px">
+        <a class="tile" href="forecast.html">
+          <div class="icon icon-mint"><svg aria-hidden="true"><use href="#i-ai"/></svg></div>
+          <div><h3 data-i18n="nav.forecast">ИИ-прогноз</h3><p data-i18n="sec.forecast">Машина үйрөнгөн модель баанын өсүү ыктымалдыгын эсептейт — тактыгын да ачык көрсөтөт.</p></div>
+        </a>
+        <a class="tile" href="analyzer.html">
+          <div class="icon"><svg aria-hidden="true"><use href="#i-chart"/></svg></div>
+          <div><h3 data-i18n="nav.analyzer">Анализатор</h3><p data-i18n="sec.analyzer">Валюта, алтын жана крипто боюнча жандуу графиктер жана индикаторлор.</p></div>
+        </a>
+        <a class="tile" href="learn.html">
+          <div class="icon icon-mint"><svg aria-hidden="true"><use href="#i-book"/></svg></div>
+          <div><h3 data-i18n="nav.learn">Окуу</h3><p data-i18n="sec.learn">Кадам-кадам: BingX'те катталып, 50 долларга акция сатып алуу; BinoDex'те демо-соода.</p></div>
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <div data-site-footer></div>
+</body>
+</html>

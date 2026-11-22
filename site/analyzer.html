@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="ky">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title data-i18n="meta.title.an">Рынок анализатору — AITRADING.KG</title>
+  <meta name="description" data-i18n-attr="content:meta.desc.an" content="Валюта, алтын, крипто жана акциялар боюнча жандуу графиктер, техникалык анализ, рынок көрүнүшү жана экономикалык календарь. Сигнал эмес — маалымат гана.">
+  <meta name="theme-color" content="#070b12">
+  <link rel="canonical" href="https://aitrading.kg/analyzer.html">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="assets/img/icon-192.png">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="AITRADING.KG">
+  <meta property="og:title" content="Рынок анализатору — AITRADING.KG">
+  <meta property="og:description" content="Валюта, алтын, крипто: жандуу графиктер жана техникалык анализ. Сигнал эмес — маалымат гана.">
+  <meta property="og:url" content="https://aitrading.kg/analyzer.html">
+  <meta property="og:image" content="https://aitrading.kg/assets/img/og-image.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:ital,wght@0,600;0,700;0,800;1,800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://s3.tradingview.com">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <script src="assets/js/config.js" defer></script>
+  <script src="assets/js/i18n.js" defer></script>
+  <script src="assets/js/main.js" defer></script>
+  <script src="assets/js/analyzer.js" defer></script>
+</head>
+<body data-page="analyzer">
+  <div data-site-header></div>
+
+  <main id="main">
+    <div class="container page-head">
+      <span class="updated"><span class="dot"></span><span data-i18n="an.live">Жандуу маалымат · TradingView</span></span>
+      <h1 data-i18n="an.h1">Рынок анализатору</h1>
+      <p data-i18n="an.lead">Жупту тандаңыз — график жана техникалык анализ ошол замат жаңыланат. Виджеттердин ичиндеги жазуулар орус тилинде (TradingView кыргыз тилин колдобойт).</p>
+    </div>
+
+    <div class="container">
+      <!-- Тобокелдик плашкасы / Плашка о рисках -->
+      <div class="risk" role="note">
+        <svg aria-hidden="true"><use href="#i-warn"/></svg>
+        <div>
+          <strong data-i18n="risk.title">Бул — сигнал эмес</strong>
+          <p data-i18n="risk.text">Индикаторлор өткөн баалар боюнча эсептелет жана келечекти алдын ала айта албайт. Анализатор киреше убада кылбайт. Соода жогорку тобокелдикке ээ: салган акчаңыздын баарын жоготуп алышыңыз мүмкүн. Чечимди өзүңүз кабыл аласыз.</p>
+        </div>
+      </div>
+
+      <!-- Жуптар / Пары -->
+      <div class="pairbar" data-pairs>
+        <div class="pair-group" role="group" aria-label="FX">
+          <span class="label" data-i18n="grp.fx">Валюталар</span>
+          <button type="button" class="pair" data-symbol="FX:EURUSD">EUR/USD</button>
+          <button type="button" class="pair" data-symbol="FX:GBPUSD">GBP/USD</button>
+          <button type="button" class="pair" data-symbol="FX:USDJPY">USD/JPY</button>
+          <button type="button" class="pair" data-symbol="FX:AUDUSD">AUD/USD</button>
+          <button type="button" class="pair" data-symbol="FX:USDCHF">USD/CHF</button>
+          <button type="button" class="pair" data-symbol="FX:USDCAD">USD/CAD</button>
+        </div>
+        <div class="pair-group" role="group" aria-label="Metals">
+          <span class="label" data-i18n="grp.metals">Металлдар</span>
+          <button type="button" class="pair" data-symbol="OANDA:XAUUSD">XAU/USD</button>
+          <button type="button" class="pair" data-symbol="OANDA:XAGUSD">XAG/USD</button>
+        </div>
+        <div class="pair-group" role="group" aria-label="Crypto">
+          <span class="label" data-i18n="grp.crypto">Крипто</span>
+          <button type="button" class="pair" data-symbol="BINANCE:BTCUSDT">BTC/USDT</button>
+          <button type="button" class="pair" data-symbol="BINANCE:ETHUSDT">ETH/USDT</button>
+          <button type="button" class="pair" data-symbol="BINANCE:SOLUSDT">SOL/USDT</button>
+          <button type="button" class="pair" data-symbol="BINANCE:XRPUSDT">XRP/USDT</button>
+        </div>
+        <div class="pair-group" role="group" aria-label="Stocks">
+          <span class="label" data-i18n="grp.stocks">Акциялар</span>
+          <button type="button" class="pair" data-symbol="NASDAQ:AAPL">Apple</button>
+          <button type="button" class="pair" data-symbol="NASDAQ:TSLA">Tesla</button>
+          <button type="button" class="pair" data-symbol="NASDAQ:NVDA">NVIDIA</button>
+          <button type="button" class="pair" data-symbol="NASDAQ:MSFT">Microsoft</button>
+        </div>
+      </div>
+
+      <div class="an-grid">
+        <section class="panel">
+          <div class="panel-head">
+            <h2><span class="sym" data-sym-label>XAU/USD</span></h2>
+            <small data-i18n="p.chart">График</small>
+          </div>
+          <div class="chart-box" data-tv-chart></div>
+        </section>
+
+        <div class="side">
+          <section class="panel">
+            <div class="panel-head">
+              <h2 data-i18n="p.ta">Техникалык анализ</h2>
+              <small data-i18n="p.ta_hint">Таймфрейм — виджеттин үстүндө</small>
+            </div>
+            <div class="ta-box" data-tv-ta></div>
+          </section>
+          <section class="panel">
+            <dl class="explain">
+              <div><dt data-i18n="ex.ma_t">Жылма орточолор (MA)</dt><dd data-i18n="ex.ma_d">Трендди көрсөтөт: баа орточодон жогору болсо, «сатып алуу» тарапка эсептелет.</dd></div>
+              <div><dt data-i18n="ex.osc_t">Осцилляторлор (RSI, MACD ж.б.)</dt><dd data-i18n="ex.osc_d">Рынок ашыкча сатып алынганбы же ашыкча сатылганбы — ошону баалайт.</dd></div>
+              <div><dt data-i18n="ex.sum_t">Жыйынтык шкала</dt><dd data-i18n="ex.sum_d">Бардык индикаторлордун орточо «добушу». Таймфрейм өзгөрсө, жыйынтык да өзгөрүшү мүмкүн — бул нормалдуу.</dd></div>
+            </dl>
+          </section>
+        </div>
+      </div>
+
+      <!-- Сессиялар / Сессии -->
+      <section class="panel" style="margin-top:16px">
+        <div class="panel-head">
+          <div>
+            <h2 data-i18n="p.sessions">Соода сессиялары</h2>
+            <small data-i18n="p.sessions_hint">Бишкек убактысы (UTC+6)</small>
+          </div>
+          <span class="clock"><span data-i18n="sess.now">Азыр Бишкекте:</span> <b data-bishkek-clock>--:--</b></span>
+        </div>
+        <div class="sessions" data-sessions></div>
+        <p class="clock" style="padding:0 16px 16px;margin:0" data-i18n="sess.note">Форекс дем алыш күндөрү иштебейт, крипто 24/7 соодаланат. Сессиялардын сааттары болжолдуу.</p>
+      </section>
+
+      <div class="grid grid-2" style="margin-top:16px">
+        <section class="panel">
+          <div class="panel-head"><h2 data-i18n="p.overview">Рынок көрүнүшү</h2></div>
+          <div class="overview-box" data-tv-overview></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2 data-i18n="p.calendar">Экономикалык календарь</h2>
+          </div>
+          <p class="clock" style="padding:12px 16px 0;margin:0" data-i18n="p.calendar_hint">Маанилүү жаңылыктар чыкканда баа кескин өзгөрүшү мүмкүн.</p>
+          <div class="calendar-box" data-tv-calendar></div>
+        </section>
+      </div>
+
+      <div class="final-cta" style="margin-top:40px">
+        <h2 data-i18n="an.cta_t">Индикаторлорду демо-эсепте сынап көрүңүз</h2>
+        <p data-i18n="an.cta_p">Адегенде реалдуу акчасыз машыгыңыз. Катталуу BinoDex'тин сайтында өтөт.</p>
+        <div class="cta-row">
+          <a class="btn btn-mint btn-lg" data-ref="binodex" href="#"><span data-i18n="cta.reg_binodex">BinoDex'те катталуу</span><svg aria-hidden="true"><use href="#i-ext"/></svg></a>
+        </div>
+        <p class="cta-note" style="margin:0 auto" data-i18n="final.risk">18+ · Соода тобокелдиктүү · Киреше кепилденбейт</p>
+      </div>
+    </div>
+  </main>
+
+  <div data-site-footer></div>
+</body>
+</html>

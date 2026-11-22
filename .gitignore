@@ -1,0 +1,14 @@
+# Telegram-боттун абалы (ар бир компьютерде өзүнчө) / состояние Telegram-бота
+tools/tg_state*.json
+tools/tg_state*.json.tmp
+__pycache__/
+# база бота (колдонуучулар, ID) — жеке маалымат
+tools/tg_bot.db*
+# озвучканын WAV'дары (чоң, mp3'төн кайра жасалат: tools/voice_split.py)
+tools/voice/*.wav
+tools/voice/_tmp_*
+# Windows / редактор
+Thumbs.db
+desktop.ini
+.env
+.env.*

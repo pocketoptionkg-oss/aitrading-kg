@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ky">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title data-i18n="meta.title.fc">ИИ-анализатор: котировканы 10 секундада талдоо — AITRADING.KG</title>
+  <meta name="description" data-i18n-attr="content:meta.desc.fc" content="Активди тандаңыз — ИИ-бот графикти өзү талдайт: тренд, RSI, MACD, Боллинджер, деңгээлдер, көлөм жана ML-модель. Прогноз ыктымалдык катары, чыныгы тактыгы менен. BingX'теги активдер.">
+  <meta name="theme-color" content="#070b12">
+  <link rel="canonical" href="https://aitrading.kg/forecast.html">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="assets/img/icon-192.png">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="AITRADING.KG">
+  <meta property="og:title" content="ИИ-анализатор — AITRADING.KG">
+  <meta property="og:image" content="https://aitrading.kg/assets/img/og-image.jpg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:ital,wght@0,600;0,700;0,800;1,800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://api.binance.com">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <script src="assets/js/config.js" defer></script>
+  <script src="assets/js/i18n.js" defer></script>
+  <script src="assets/js/main.js" defer></script>
+  <script src="assets/vendor/lightweight-charts-4.2.0.js" defer></script>
+  <script src="assets/js/ai-engine.js" defer></script>
+  <script src="assets/js/ai-voice.js" defer></script>
+  <script src="assets/js/ai-spider.js" defer></script>
+  <script src="assets/js/ai-analyst.js" defer></script>
+  <script src="assets/js/ai-page.js" defer></script>
+</head>
+<body data-page="forecast">
+  <div data-site-header></div>
+
+  <main id="main">
+    <div class="container page-head">
+      <span class="updated"><span class="dot"></span><span data-i18n="fc.live">ИИ-аналитик · BingX'теги активдер · жандуу маалымат</span></span>
+      <h1 data-i18n="fc.h1">ИИ-анализатор: каалаган котировканы 10 секундада талдаңыз</h1>
+      <p data-i18n="fc.lead">Активди тандаңыз — ИИ-паук графикти аралап жөрмөлөйт: чокуларга жип тартып, трендди, RSI, MACD, Боллинджерди, колдоо/каршылык деңгээлдерин жана көлөмдү текшерет. Анан ML-модель кийинки шамдын ыктымалдык прогнозун берет — анын чыныгы тактыгы менен.</p>
+    </div>
+
+    <div class="container">
+      <div class="ai-tabs" role="tablist">
+        <button type="button" data-tab="ai" aria-pressed="true" data-i18n="fc.tab_ai">✦ ИИ-аналитик</button>
+        <button type="button" data-tab="pro" aria-pressed="false" data-i18n="fc.tab_pro">TradingView Pro</button>
+      </div>
+
+      <section data-panel="ai">
+        <div data-ai-analyst data-mode="full" data-symbol="BTC" data-tf="1h"></div>
+      </section>
+
+      <section data-panel="pro" hidden>
+        <div class="pro-grid">
+          <div class="panel"><div class="panel-head"><h2><span class="sym" data-pro-label>BTC/USDT</span></h2><small>TradingView · BingX</small></div><div class="pro-chart" data-pro-chart></div></div>
+          <div class="panel"><div class="panel-head"><h2 data-i18n="p.ta">Техникалык анализ</h2></div><div class="ta-box" data-pro-ta></div></div>
+        </div>
+      </section>
+
+      <div class="risk" role="note" style="margin-top:16px">
+        <svg aria-hidden="true"><use href="#i-warn"/></svg>
+        <div>
+          <strong data-i18n="fc.risk_t">Прогноз — кепилдик эмес</strong>
+          <p data-i18n="fc.risk_p">Бул ыктымалдык баа гана. Рынокту эч бир модель так алдын ала айта албайт: ыктымалдык 60% болсо да, баа тескери кетиши мүмкүн. Сатып алуу же сатуу сигналы катары колдонбоңуз. Соода тобокелдиктүү — акчаңыздын баарын жоготуп алышыңыз мүмкүн.</p>
+        </div>
+      </div>
+
+      <section class="section" style="padding-bottom:0">
+        <div class="section-head">
+          <span class="eyebrow" data-i18n="fc.how_e">Кантип иштейт</span>
+          <h2 data-i18n="fc.how">ИИ-паук эмне кылат?</h2>
+        </div>
+        <ol class="bot-steps">
+          <li><span class="n">1</span><div><b data-i18n="fc.b1t">Тренд</b><span data-i18n="fc.b1d">MA20 жана MA50 жылма орточолорун тартып, баа кайсы тарапка бара жатканын аныктайт.</span></div></li>
+          <li><span class="n">2</span><div><b>RSI</b><span data-i18n="fc.b2d">Рынок ашыкча сатып алынганбы (70дөн жогору) же ашыкча сатылганбы (30дан төмөн) — текшерет.</span></div></li>
+          <li><span class="n">3</span><div><b>MACD</b><span data-i18n="fc.b3d">Импульсту көрөт: кыймыл күчөп жатабы же басаңдап жатабы.</span></div></li>
+          <li><span class="n">4</span><div><b data-i18n="fc.b4t">Боллинджер тилкелери</b><span data-i18n="fc.b4d">Баа өзүнүн кадимки диапазонунун кайсы жеринде турганын көрсөтөт.</span></div></li>
+          <li><span class="n">5</span><div><b data-i18n="fc.b5t">Колдоо жана каршылык</b><span data-i18n="fc.b5d">Баа мурда көп токтогон деңгээлдерди таап, графикке сызат.</span></div></li>
+          <li><span class="n">6</span><div><b data-i18n="fc.b6t">Көлөм</b><span data-i18n="fc.b6d">Акыркы шамдагы соода көлөмүн орточо менен салыштырат.</span></div></li>
+          <li><span class="n">7</span><div><b data-i18n="fc.b7t">ML-модель</b><span data-i18n="fc.b7d">Логистикалык регрессия ~1000 шамдан үйрөнүп, кийинки шамдын өсүү ыктымалдыгын эсептейт. Тактыгы көрбөгөн маалыматта текшерилет жана ачык жазылат.</span></div></li>
+          <li><span class="n">✓</span><div><b data-i18n="fc.b8t">Жыйынтык</b><span data-i18n="fc.b8d">Ыктымалдык, сигналдардын саны, деңгээлдер — бир карточкада. Бул — маалымат, сунуш эмес.</span></div></li>
+        </ol>
+      </section>
+
+      <div class="final-cta" style="margin-top:40px">
+        <h2 data-i18n="fc.cta_t">Талдоону демо же кичине сумма менен текшериңиз</h2>
+        <p data-i18n="fc.cta_p">Анализаторго көрүнгөн бардык активдер BingX'те бар. Шашпаңыз: адегенде үйрөнүү, андан кийин реалдуу акча.</p>
+        <div class="cta-row">
+          <a class="btn btn-blue btn-lg" data-ref="bingx" href="#"><span data-i18n="cta.reg_bingx">BingX'те катталуу</span><svg aria-hidden="true"><use href="#i-ext"/></svg></a>
+          <a class="btn btn-ghost btn-lg" href="learn.html#bingx"><span data-i18n="cta.how">Кантип?</span></a>
+        </div>
+        <p class="cta-note" style="margin:0 auto" data-i18n="final.risk">18+ · Соода тобокелдиктүү · Киреше кепилденбейт</p>
+      </div>
+    </div>
+  </main>
+
+  <div data-site-footer></div>
+</body>
+</html>
