@@ -686,6 +686,13 @@
       setTimeout(function () { if (!done) { c.removeEventListener("message", on); res(false); } }, 700);
     });
   }
+  /* WhatsApp заявкасы (брокерде катталуудан мурун) жана сигналдарга доступ — assets/js/access.js */
+  function initAccessGate() {
+    if (window.ATGate || document.querySelector('script[src$="access.js"]')) return;
+    var s = document.createElement("script");
+    s.src = "assets/js/access.js";
+    document.head.appendChild(s);
+  }
   function initChartLinks() {
     // Басылган өтмөк: TradingView iframe'ин басканда бет «blur» болот, фокус ошол iframe'де
     window.addEventListener("blur", function () {
@@ -845,6 +852,7 @@
     applyLang(initialLang(), true);
     initTicker();
     initChartLinks();
+    initAccessGate();
     initPanels();
   }
 

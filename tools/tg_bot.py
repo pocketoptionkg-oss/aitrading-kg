@@ -336,6 +336,52 @@ LESSON_KEYS = [("l_basics", "basics"), ("l_bingx", "bingx"), ("l_binodex", "bino
 LESSON_VIDEO = {"l_basics": "basics", "l_bingx": "bingx-register", "l_binodex": "binodex-demo", "l_rules": "rules", "l_signal": "signals"}   # config.js → VIDEOS
 
 
+FREE_SIGNALS = int(os.environ.get("TG_FREE_SIGNALS") or 2)       # катталбагандарга акысыз сигнал
+SITE_ACCESS_DAYS = 7                                                # сайттагы доступ шилтемеси канча күн жарактуу
+TX_GATE = {
+    "kg": {
+        "free_tag": "🎁 Акысыз сигнал {n}/{m}",
+        "free_last": "🔒 <b>Акысыз сигналдар бүттү ({m}/{m}).</b>\nБардык сигналдарды алуу үчүн:\n1. Биздин шилтеме менен брокерде катталыңыз\n"
+                     "2. Эсепти толуктаңыз (милдеттүү)\n3. ID'ңизди ушул ботко жибериңиз — текшерилгенден кийин сигналдар ачылат.",
+        "free_left": "🎁 Сизде дагы <b>{n}</b> акысыз сигнал бар — «⭐ Азыр эң мыкты» же жаңы сигнал келгенде.",
+        "free_none": "🔒 Акысыз {m} сигнал колдонулду. Андан ары — катталуу + толуктоо милдеттүү.",
+        "btn_site_sig": "🌐 Сайтта ачуу (сигналдар)",
+        "ask_wa": "📱 Катталуудан мурун <b>WhatsApp номериңизди</b> жазыңыз (мисалы +996 700 123 456).\n"
+                  "Команда катталуу жана толуктоо боюнча жардам берет. Почта жана сырсөз керек эмес.",
+        "bad_wa": "Номер туура эмес. Толук жазыңыз, мисалы +996 700 123 456.",
+        "wa_ok": "✓ Рахмат! Номер сакталды. Эми брокерди тандаңыз:",
+    },
+    "ru": {
+        "free_tag": "🎁 Бесплатный сигнал {n}/{m}",
+        "free_last": "🔒 <b>Бесплатные сигналы закончились ({m}/{m}).</b>\nЧтобы получать все сигналы:\n1. Зарегистрируйтесь у брокера по нашей ссылке\n"
+                     "2. Пополните счёт (обязательно)\n3. Отправьте ID в этот бот — после проверки сигналы откроются.",
+        "free_left": "🎁 У вас ещё <b>{n}</b> бесплатных сигнала — «⭐ Лучшее сейчас» или когда придёт новый сигнал.",
+        "free_none": "🔒 Бесплатные {m} сигнала использованы. Дальше — регистрация + пополнение обязательно.",
+        "btn_site_sig": "🌐 Открыть на сайте (сигналы)",
+        "ask_wa": "📱 Перед регистрацией напишите <b>номер WhatsApp</b> (например +996 700 123 456).\n"
+                  "Команда поможет с регистрацией и пополнением. Почта и пароль не нужны.",
+        "bad_wa": "Неверный номер. Введите полностью, например +996 700 123 456.",
+        "wa_ok": "✓ Спасибо! Номер сохранён. Теперь выберите брокера:",
+    },
+}
+for _l, _d in TX_GATE.items():
+    TX[_l].update(_d)
+
+
+def norm_wa(s):
+    """WhatsApp номери: +996700123456. Кыргызстандын кыска жазылышы да кабыл алынат."""
+    s = str(s or "").strip()
+    plus = s.startswith("+") or s.startswith("00")
+    d = re.sub(r"\D", "", s)
+    if s.startswith("00"):
+        d = d[2:]
+    if not plus and re.match(r"^0\d{9}$", d):
+        d = "996" + d[1:]
+    if not plus and re.match(r"^\d{9}$", d):
+        d = "996" + d
+    return "+" + d if re.match(r"^\d{10,15}$", d) else None
+
+
 def T(u, key, **kw):
     lang = (u or {}).get("lang") or "kg"
     v = TX.get(lang, TX["kg"]).get(key, TX["kg"].get(key, key))
@@ -384,6 +430,13 @@ class DB:
         self.lock = threading.RLock()
         with self.lock:
             self.c.executescript(SCHEMA)
+            cols = {r[1] for r in self.c.execute("PRAGMA table_info(users)").fetchall()}
+            for col, typ in (("free_sent", "INTEGER DEFAULT 0"), ("wa", "TEXT")):
+                if col not in cols:
+                    self.c.execute("ALTER TABLE users ADD COLUMN %s %s" % (col, typ))
+            self.c.execute("CREATE TABLE IF NOT EXISTS leads(id TEXT PRIMARY KEY, t INTEGER, wa TEXT, name TEXT, broker TEXT, lang TEXT, "
+                           "page TEXT, country TEXT, src TEXT, tg_id INTEGER)")
+            self.c.commit()
 
     def q(self, sql, args=()):
         with self.lock:
@@ -496,6 +549,14 @@ def b36(n):
         s = "0123456789abcdefghijklmnopqrstuvwxyz"[r] + s
         if not n:
             return s
+
+
+def site_access_url(tg_id, path="/forecast.html"):
+    """Сайттагы сигналдарга доступ: functions/api/access.js ушул колду текшерет."""
+    if not link_secret():
+        return None
+    tg36, exp36 = b36(tg_id), b36(int(time.time()) + SITE_ACCESS_DAYS * 86400)
+    return "%s%s#acc=%s.%s.%s" % (S.SITE_URL, path, tg36, exp36, link_sig("acc|%s|%s" % (tg36, exp36), 22))
 
 
 def oauth_url(tg_id):
@@ -646,6 +707,9 @@ class App:
         src = start_arg[:32] if start_arg and not start_arg.startswith("bx_") else None
         u = self.ensure_user(m["from"], src)
         uid = u["id"]
+        if start_arg.startswith("ld_"):                    # сайтта WhatsApp калтырып, ботко келди
+            self.link_lead(u, start_arg[3:40])
+            u = self.db.user(uid)
         if start_arg.startswith("bx_"):                    # BinoDex'тен кайтты (OAuth)
             return self.oauth_result(u, start_arg[:80])
         cmd = text.split(" ", 1)[0].split("@", 1)[0].lower() if text.startswith("/") else None
@@ -686,6 +750,9 @@ class App:
             u = self.db.upd(uid, lang="ru" if u.get("lang") == "kg" else "kg")
             return self.send(uid, T(u, "lang_set"), self.menu_kb(u))
         if act == "register":
+            if not u.get("wa") and not self.is_admin(uid):
+                self.db.upd(uid, step="wa")
+                return self.send(uid, T(u, "ask_wa"))
             return self.send(uid, T(u, "reg_choose"), ik([[("BingX", "reg:bingx"), ("BinoDex", "reg:binodex")]]))
         if act == "signals":
             return self.show_signals(u)
@@ -743,6 +810,18 @@ class App:
 
     def on_step(self, u, m, text):
         uid, step = u["id"], u["step"]
+        if step == "wa":
+            c = m.get("contact") or {}
+            wa = norm_wa(c.get("phone_number") or text)
+            if not wa:
+                return self.send(uid, T(u, "bad_wa"))
+            u = self.db.upd(uid, wa=wa, step=None)
+            lid = "bot-%d" % uid
+            self.db.x("INSERT OR IGNORE INTO leads(id,t,wa,name,broker,lang,page,country,src,tg_id) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                      (lid, S.now_ms(), wa, u.get("first_name") or "", "", u.get("lang") or "kg", "bot", "", "bot", uid))
+            self.notify_admins("📱 <b>Жаңы WhatsApp</b> (бот): %s · %s" % (E(wa), self.user_link(u)),
+                               ik([[("💬 WhatsApp", "https://wa.me/" + wa.lstrip("+"))]]))
+            return self.send(uid, T(u, "wa_ok"), ik([[("BingX", "reg:bingx"), ("BinoDex", "reg:binodex")]]))
         if step.startswith("id:"):
             b = step[3:]
             tid = re.sub(r"\s+", "", text)
@@ -826,15 +905,20 @@ class App:
         if u["status"] == "suspended":
             return self.send(uid, T(u, "suspended", days=ACCESS_DAYS), ik([[(T(u, "btn_reactivate"), "reactivate")]]))
         if u["status"] != "active":
-            return self.send(uid, T(u, "sig_locked") + tail, ik([[(T(u, "btn_register"), "menu:register")]]))
+            left = self.free_left(u)
+            extra = "\n\n" + (T(u, "free_left", n=left) if left > 0 else T(u, "free_none", m=FREE_SIGNALS))
+            return self.send(uid, T(u, "sig_locked") + extra + tail,
+                             ik([[(T(u, "btn_now"), "sig:now")] if left > 0 else [], [(T(u, "btn_register"), "menu:register")]]))
         head = T(u, "sig_on", exp=",".join(map(str, self.exp))) if u.get("signals") else T(u, "sig_off")
         if self.db.kv("signals_paused"):
             head += "\n" + T(u, "paused")
-        return self.send(uid, head + tail, ik([[(T(u, "btn_now"), "sig:now"), (T(u, "btn_off"), "sig:off") if u.get("signals") else (T(u, "btn_on"), "sig:on")]]))
+        return self.send(uid, head + tail, ik([[(T(u, "btn_now"), "sig:now"), (T(u, "btn_off"), "sig:off") if u.get("signals") else (T(u, "btn_on"), "sig:on")],
+                                               [(T(u, "btn_site_sig"), site_access_url(uid))]]))
 
     def show_now(self, u):
         uid = u["id"]
-        if u["status"] != "active":
+        free = u["status"] != "active"
+        if free and self.free_left(u) <= 0:
             return self.show_signals(u)
         top = self.engine.latest() if self.engine else []
         if not top:
@@ -848,7 +932,13 @@ class App:
                                                        ("BinoDex %d %s" % (x["exp"], L["min"])) if fx else "BingX · " + L["h1"],
                                                        E(L["acc"].format(a=S.pct(x["acc"]), b=S.pct(x["bl"])))))
         lines.append("\n" + E(L["honest"]))
-        return self.send(uid, "\n".join(lines))
+        if free:
+            u = self.db.upd(uid, free_sent=(u.get("free_sent") or 0) + 1)
+            lines.append("\n" + T(u, "free_tag", n=u["free_sent"], m=FREE_SIGNALS))
+        self.send(uid, "\n".join(lines))
+        if free and self.free_left(u) <= 0:
+            self.send(uid, T(u, "free_last", m=FREE_SIGNALS), ik([[(T(u, "btn_register"), "menu:register")]]))
+        return True
 
     # ---------- Профиль ----------
     def show_profile(self, u):
@@ -945,6 +1035,7 @@ class App:
 
     def card(self, t):
         bal = (" · %.2f USDT" % t["balance"]) if t.get("balance") is not None else ""
+        bal += (" · WA %s" % E(t["wa"])) if t.get("wa") else ""
         return "%s · %s · %s <code>%s</code>%s · кирген: %d күн мурун" % (
             self.user_link(t), TX["kg"]["st"].get(t["status"], t["status"]), E(t.get("broker") or "—"), E(t.get("trader_id") or "—"), bal, ago_days(t.get("last_seen")))
 
@@ -1170,17 +1261,25 @@ class App:
         if kind == "signal":
             if self.db.kv("signals_paused"):
                 return False
-            users = self.db.q("SELECT * FROM users WHERE status='active' AND signals=1")
+            users = self.db.q("SELECT * FROM users WHERE signals=1 AND (status='active' OR (status IN ('new','wait_dep','pending','rejected') "
+                              "AND COALESCE(free_sent,0)<?))", (FREE_SIGNALS,))
         else:
             users = self.db.q("SELECT u.* FROM users u JOIN sig_sent s ON s.user_id=u.id WHERE s.sig_id=? AND u.status<>'blocked'", (sg["id"],))
         sent = 0
         for u in users:
             lang = u.get("lang") or "kg"
             text = S.msg_signal(sg, lang) if kind == "signal" else S.msg_result(sg, hist, lang)
+            free = kind == "signal" and u["status"] != "active"
+            if free:
+                text += "\n\n" + T(u, "free_tag", n=(u.get("free_sent") or 0) + 1, m=FREE_SIGNALS)
             if self.send(u["id"], text):
                 sent += 1
                 if kind == "signal":
                     self.db.x("INSERT OR IGNORE INTO sig_sent(sig_id,user_id) VALUES(?,?)", (sg["id"], u["id"]))
+                if free:
+                    u2 = self.db.upd(u["id"], free_sent=(u.get("free_sent") or 0) + 1)
+                    if self.free_left(u2) <= 0:
+                        self.send(u["id"], T(u2, "free_last", m=FREE_SIGNALS), ik([[(T(u2, "btn_register"), "menu:register")]]))
             time.sleep(0.04)
         if self.channel:
             lang = os.environ.get("TG_LANG", "kg")
@@ -1226,6 +1325,61 @@ class App:
                 w = 30
             time.sleep(w)
 
+    def free_left(self, u):
+        return max(0, FREE_SIGNALS - int(u.get("free_sent") or 0))
+
+    def link_lead(self, u, lid):
+        lid = re.sub(r"[^0-9a-z-]", "", str(lid))[:20]
+        if not lid:
+            return
+        ld = self.db.one("SELECT * FROM leads WHERE id=?", (lid,))
+        if ld:
+            self.db.x("UPDATE leads SET tg_id=? WHERE id=?", (u["id"], lid))
+            if not u.get("wa"):
+                self.db.upd(u["id"], wa=ld["wa"])
+        else:
+            self.db.kv_set("lead_tg:" + lid, u["id"])         # заявка али келе элек — кийин байланат
+
+    def pull_leads(self):
+        if not link_secret():
+            return 0
+        ts = str(S.now_ms())
+        after = self.db.kv("leads_after", "") or ""
+        req = urllib.request.Request(S.SITE_URL + "/api/leads?after=" + urllib.parse.quote(after),
+                                     headers={"x-ts": ts, "x-sig": link_sig("leads|" + ts, 22), "User-Agent": S.UA})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            items = (json.loads(r.read().decode("utf-8")) or {}).get("items") or []
+        for it in items:
+            lid = str(it.get("id") or "")
+            wa = norm_wa(it.get("wa"))
+            if not lid or not wa:
+                continue
+            tg = self.db.kv("lead_tg:" + lid)
+            self.db.x("INSERT OR IGNORE INTO leads(id,t,wa,name,broker,lang,page,country,src,tg_id) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                      (lid, int(it.get("t") or 0), wa, str(it.get("name") or "")[:60], str(it.get("broker") or ""), str(it.get("lang") or ""),
+                       str(it.get("page") or ""), str(it.get("country") or ""), "site", tg))
+            if tg:
+                self.db.kv_set("lead_tg:" + lid, None)
+                tu = self.db.user(tg)
+                if tu and not tu.get("wa"):
+                    self.db.upd(tg, wa=wa)
+            br = {"bingx": "BingX", "binodex": "BinoDex"}.get(it.get("broker"), "—")
+            self.notify_admins("📱 <b>Жаңы WhatsApp</b> (сайт): %s%s · %s · %s%s" % (
+                E(wa), (" · " + E(it.get("name"))) if it.get("name") else "", br, E(it.get("page") or ""),
+                (" · " + E(it.get("country"))) if it.get("country") else ""),
+                ik([[("💬 WhatsApp", "https://wa.me/" + wa.lstrip("+"))]]))
+            self.db.kv_set("leads_after", lid)
+            time.sleep(0.05)
+        return len(items)
+
+    def loop_leads(self):
+        while True:
+            try:
+                self.pull_leads()
+            except Exception as e:  # noqa: BLE001
+                print("! leads: %s" % self.tg.redact(e))
+            time.sleep(45)
+
     def loop_maint(self):
         while True:
             try:
@@ -1260,6 +1414,7 @@ class App:
         if self.engine:
             threading.Thread(target=self.loop_signals, daemon=True).start()
         threading.Thread(target=self.loop_maint, daemon=True).start()
+        threading.Thread(target=self.loop_leads, daemon=True).start()
         offset = int(self.db.kv("offset") or 0)
         while True:
             try:

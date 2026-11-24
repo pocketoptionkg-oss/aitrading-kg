@@ -321,6 +321,8 @@
     this.renderBest();
   };
   function dirTxt(x) { return x.dir > 0 ? "▲ " + T("aia.sig_up") : "▼ " + T("aia.sig_dn"); }
+  /* ⭐ тизмеси бир эле учурда бир нече багыт көрсөтөт — доступ ачык болгондо гана (access.js) */
+  function gateLocked() { return !!window.ATGate && window.ATGate.state() !== "open"; }
   function dirP(x) { return pct(x.dir > 0 ? x.p : 1 - x.p); }
   Analyst.prototype.renderBest = function () {
     var B = this.best, el = this.el, self = this, fresh = this.fresh(), fx = this.mkt === "binodex";
@@ -334,13 +336,14 @@
       el.bestList.innerHTML = '<p class="best-none">' + esc(fmt(T(fx ? "aia.best_none_fx" : "aia.best_none"), { n: B.n })) + "</p>";
       return;
     }
+    var lk = gateLocked();
     el.bestList.innerHTML = B.top.map(function (x, k) {
       var cur = x.base === self.base;
-      return '<button type="button" class="best-it ' + (k === 0 ? "top " : "") + (x.dir > 0 ? "up" : "down") + (cur ? " cur" : "") + '" data-pick="' + esc(x.base) + '">' +
+      return '<button type="button" class="best-it ' + (k === 0 ? "top " : "") + (lk ? "gt-locked" : x.dir > 0 ? "up" : "down") + (cur ? " cur" : "") + '" data-pick="' + esc(x.base) + '">' +
         '<span class="best-rank">' + (k === 0 ? "★" : k + 1) + "</span>" +
         '<span class="best-name"><b>' + esc(x.name) + "</b>" + (k === 0 ? '<small>' + esc(T(fx ? "aia.best_buy_fx" : "aia.best_buy")) + "</small>" : "") + "</span>" +
-        '<span class="best-dir">' + esc(dirTxt(x)) + "</span>" +
-        '<span class="best-p">' + dirP(x) + "</span>" +
+        '<span class="best-dir">' + esc(lk ? window.ATGate.bestLock() : dirTxt(x)) + "</span>" +
+        '<span class="best-p">' + (lk ? "🔒" : dirP(x)) + "</span>" +
         '<small class="best-acc">' + esc(fmt(T("aia.best_acc"), { a: pct(x.acc), b: pct(x.bl) })) + "</small>" +
         (cur ? '<small class="best-cur">' + esc(T("aia.best_open")) + "</small>" : '<span class="best-go" aria-hidden="true">→</span>') +
         "</button>";
@@ -351,8 +354,9 @@
     var B = this.best, top = this.fresh() && B.top[0];
     if (!this.fresh()) return '<div class="sig-best wait" data-bestrow><i aria-hidden="true">⭐</i><span>' + esc(T("aia.best_scan_s")) + "</span></div>";
     if (!top) return '<div class="sig-best none" data-bestrow><i aria-hidden="true">⭐</i><span>' + esc(T(this.mkt === "binodex" ? "aia.best_none_s_fx" : "aia.best_none_s")) + "</span></div>";
-    if (top.base === this.base) return '<div class="sig-best me ' + (top.dir > 0 ? "up" : "down") + '" data-bestrow><i aria-hidden="true">⭐</i><span>' + esc(fmt(T("aia.best_me"), { n: B.n })) + "</span><b>" + esc(dirTxt(top)) + " " + dirP(top) + "</b></div>";
-    return '<button type="button" class="sig-best go ' + (top.dir > 0 ? "up" : "down") + '" data-bestrow data-pick="' + esc(top.base) + '"><i aria-hidden="true">⭐</i><span>' + esc(T("aia.best_now")) + "</span><b>" + esc(top.name) + " " + esc(dirTxt(top)) + " " + dirP(top) + '</b><em>' + esc(T("aia.best_go")) + " →</em></button>";
+    var lk = gateLocked(), dtx = lk ? "🔒" : esc(dirTxt(top)) + " " + dirP(top), dcls = lk ? "gt-locked" : top.dir > 0 ? "up" : "down";
+    if (top.base === this.base) return '<div class="sig-best me ' + dcls + '" data-bestrow><i aria-hidden="true">⭐</i><span>' + esc(fmt(T("aia.best_me"), { n: B.n })) + "</span><b>" + dtx + "</b></div>";
+    return '<button type="button" class="sig-best go ' + dcls + '" data-bestrow data-pick="' + esc(top.base) + '"><i aria-hidden="true">⭐</i><span>' + esc(T("aia.best_now")) + "</span><b>" + esc(top.name) + " " + dtx + '</b><em>' + esc(T("aia.best_go")) + " →</em></button>";
   };
   Analyst.prototype.updateBestRow = function () {
     var row = this.el.result.querySelector("[data-bestrow]");
@@ -360,7 +364,7 @@
   };
   Analyst.prototype.notifyBest = function (force) {
     var B = this.best, top = B && B.top[0];
-    if (!top || !AT.notifyOn()) return;
+    if (!top || !AT.notifyOn() || gateLocked()) return;
     var fx = B.mkt === "binodex", key = top.base + ":" + top.dir + ":" + (fx ? B.exp : "1h"), now = Date.now(), L;
     try { L = JSON.parse(localStorage.getItem(LAST_NTF) || "{}"); } catch (e) { L = {}; }
     if (!force) {
@@ -848,8 +852,20 @@
     var p = ml ? ml.p : 0.5, edge = ml ? (ml.acc - ml.base) : -1;
     var dir = edge > 0.01 ? (p >= 0.55 ? 1 : p <= 0.45 ? -1 : 0) : 0;
     var last = this.cs[this.cs.length - 1].close;
+    if (!redraw) this.sig = { id: Date.now(), code: code, name: this.nameOf(this.base), exp: this.exp, dir: dir, p: p, entry: last, t0: Date.now(), tEnd: Date.now() + this.exp * 60000, res: null, exit: null };
+    // Доступ: 2 акысыз сигнал, андан ары — катталуу + толуктоо + бот (access.js)
+    var gid = "s" + this.sig.id, G = window.ATGate;
+    if (dir !== 0 && G && !G.consume(gid)) {
+      clearInterval(this.sigTimer);
+      this.auto = false;
+      this.el.result.innerHTML =
+        '<div class="sig-head"><span class="badge badge-mint">' + esc(T("aia.sig_title")) + '</span><span class="muted">' + esc(this.sig.name) + " · " + this.sig.exp + " " + esc(T("aia.min")) + "</span></div>" +
+        G.lockHtml(true) + '<div class="aia-actions"><button type="button" class="btn btn-ghost btn-sm aia-again">↻ ' + esc(T("aia.sig_new")) + "</button></div>";
+      this.el.result.querySelector(".aia-again").addEventListener("click", function () { self.start(); });
+      AT.applyRefLinks();
+      return;
+    }
     if (!redraw) {
-      this.sig = { id: Date.now(), code: code, name: this.nameOf(this.base), exp: this.exp, dir: dir, p: p, entry: last, t0: Date.now(), tEnd: Date.now() + this.exp * 60000, res: null, exit: null };
       if (dir !== 0) { var all = sigLoad(); all.push(this.sig); sigSave(all); }
       this.syncBest();
       // Авто-режимде телефон чөнтөктө болсо — жаңы сигнал жөнүндө билдирме
@@ -873,7 +889,7 @@
     }).join("");
     this.el.result.innerHTML =
       '<div class="sig-head"><span class="badge badge-mint">' + esc(T("aia.sig_title")) + '</span><span class="muted">' + esc(sg.name) + " · " + sg.exp + " " + esc(T("aia.min")) + '</span><span class="sig-prov">' + esc(d.provider || "") + " · " + esc(T("aia.live")) + "</span></div>" +
-      this.bestRow() +
+      this.bestRow() + (G ? G.freeChip(gid) : "") +
       '<div class="sig-main">' +
       '<div class="sig-verdict ' + (dir > 0 ? "up" : dir < 0 ? "down" : "flat") + '">' + esc(verdict) + "</div>" +
       '<div class="sig-timer"><div class="sig-ring"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="19" class="bg"/><circle cx="22" cy="22" r="19" class="fg" data-ring/></svg><b data-cd>' + mmss(sg.tEnd - Date.now()) + "</b></div>" +
@@ -981,8 +997,17 @@
     var upd = (this.data.updated || "").replace("T", " ").replace("Z", " UTC");
     var src = this.data.source === "fx" ? fmt(T("aia.src_fx"), { t: upd }) : this.data.source === "bingx" ? fmt(T("aia.src_bx"), { t: upd }) : T("aia.src_bn");
     this.syncBest();
+    // Доступ: багыты бар прогноз да сигнал катары эсептелет (2 акысыз)
+    var G = window.ATGate, gid = R._gid || (R._gid = "f" + Date.now());
+    if (cls !== "flat" && G && !G.consume(gid)) {
+      this.el.result.innerHTML = this.bestRow() + G.lockHtml(FX) +
+        '<div class="aia-actions"><button type="button" class="btn btn-ghost btn-sm aia-again">↻ ' + esc(T("aia.again")) + "</button></div>";
+      this.el.result.querySelector(".aia-again").addEventListener("click", function () { self.start(); });
+      AT.applyRefLinks();
+      return;
+    }
     this.el.result.innerHTML =
-      this.bestRow() +
+      this.bestRow() + (G ? G.freeChip(gid) : "") +
       '<div class="aia-res-main">' +
       '<svg class="aia-gauge" viewBox="0 0 120 70" aria-hidden="true"><path d="M10 64 A50 50 0 0 1 110 64" stroke="url(#gg' + this.run_id + ')" stroke-width="10" fill="none" stroke-linecap="round"/>' +
       '<defs><linearGradient id="gg' + this.run_id + '" x1="0" x2="1"><stop offset="0" stop-color="#ff6b6b"/><stop offset=".5" stop-color="#9aa6b8"/><stop offset="1" stop-color="#5ce8aa"/></linearGradient></defs>' +
@@ -1014,6 +1039,8 @@
       var a = new Analyst(el);
       if (ex >= 1 && ex <= 240 && a.base.indexOf("FX_") === 0) a.exp = ex;
       el._aia = a;
+      // Доступ ачылса же жабылса (access.js) — ⭐ тизмесин кайра чийебиз
+      window.addEventListener("atgate", function () { if (a.best) a.renderBest(); a.updateBestRow(); });
       AT.lazy(el, function () { setTimeout(function () { a.start(); }, 300); });
     });
   }
