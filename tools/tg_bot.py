@@ -834,6 +834,8 @@ class App:
             return self.on_step(u, m, text)
         if u.get("step") and (cmd or text in ACTIONS):
             u = self.db.upd(uid, step=None)
+        if cmd in ("/kanal", "/channels") and self.is_admin(uid):
+            return self.adm_channels(u)
         act = CMDS.get(cmd) if cmd else ACTIONS.get(text)
         if act == "find" and self.is_admin(uid):
             return self.adm_find(u, text.split(" ", 1)[1] if " " in text else "")
@@ -1500,6 +1502,18 @@ class App:
         self.api("sendMessage", {"chat_id": uid, "text": text, "parse_mode": "HTML", "reply_markup": kb} if kb else
                  {"chat_id": uid, "text": text, "parse_mode": "HTML"}, chat=uid)
         return False
+
+    def adm_channels(self, u):
+        lines = []
+        for kind, nm in (("bingx", "BingX (фьючерс)"), ("binodex", "BinoDex")):
+            cid = self.db.kv("ch:" + kind)
+            if not cid:
+                lines.append("❌ %s: канал туташкан жок" % nm)
+                continue
+            r = self.api("sendMessage", {"chat_id": cid, "text": "✅ AITRADING.KG: бул канал — %s сигналдары үчүн. Тест билдирүү." % nm})
+            info = self.api("getChat", {"chat_id": cid}) or {}
+            lines.append(("✅ %s: <b>%s</b> — тест жөнөтүлдү" if r else "⚠️ %s: <b>%s</b> — жөнөтүлгөн жок (боттун укуктарын текшериңиз)") % (nm, E(info.get("title") or str(cid))))
+        return self.send(u["id"], "📢 <b>Каналдар</b>\n" + "\n".join(lines))
 
     def channel_for(self, u):
         b = u.get("broker")
