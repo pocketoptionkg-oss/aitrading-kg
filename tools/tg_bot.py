@@ -32,6 +32,12 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import tg_signals as S  # noqa: E402
+try:                                                  # сүрөттөр (Pillow + DejaVu шрифти); жок болсо — текст гана
+    import tg_cards as CARDS  # noqa: E402
+    if not CARDS.available():
+        CARDS = None
+except Exception:  # noqa: BLE001
+    CARDS = None
 
 HERE = S.HERE
 DB_PATH = os.environ.get("TG_DB") or os.path.join(HERE, "tg_bot.db")
@@ -368,6 +374,21 @@ for _l, _d in TX_GATE.items():
     TX[_l].update(_d)
 
 
+def _multipart(fields, files):
+    """Telegram'га файл жүктөө үчүн multipart/form-data."""
+    import io as _io
+    b = "----aitrading" + secrets.token_hex(8)
+    out = _io.BytesIO()
+    for k, v in fields.items():
+        out.write(('--%s\r\nContent-Disposition: form-data; name="%s"\r\n\r\n' % (b, k)).encode("utf-8"))
+        out.write(str(v).encode("utf-8") + b"\r\n")
+    for k, (fn, data, ct) in files.items():
+        out.write(('--%s\r\nContent-Disposition: form-data; name="%s"; filename="%s"\r\nContent-Type: %s\r\n\r\n' % (b, k, fn, ct)).encode("utf-8"))
+        out.write(data + b"\r\n")
+    out.write(("--%s--\r\n" % b).encode("utf-8"))
+    return out.getvalue(), "multipart/form-data; boundary=" + b
+
+
 def norm_wa(s):
     """WhatsApp номери: +996700123456. Кыргызстандын кыска жазылышы да кабыл алынат."""
     s = str(s or "").strip()
@@ -643,6 +664,49 @@ class App:
                 print("! %s: %s" % (method, m))
             return None
 
+    def photo(self, chat, img, caption, kb=None):
+        """img: PNG байттары (биринчи жолу жүктөлөт) же Telegram file_id (кайра колдонуу). Кайтарат: file_id же None."""
+        try:
+            if isinstance(img, (bytes, bytearray)):
+                fields = {"chat_id": chat, "caption": caption, "parse_mode": "HTML"}
+                if kb is not None:
+                    fields["reply_markup"] = json.dumps(kb, ensure_ascii=False)
+                body, ct = _multipart(fields, {"photo": ("aitrading.png", bytes(img), "image/png")})
+                req = urllib.request.Request("https://api.telegram.org/bot%s/sendPhoto" % self.tg.token, data=body,
+                                             headers={"Content-Type": ct, "User-Agent": S.UA})
+                with urllib.request.urlopen(req, timeout=40) as r:
+                    j = json.loads(r.read().decode("utf-8"))
+                res = j.get("result") if j.get("ok") else None
+            else:
+                pl = {"chat_id": chat, "photo": img, "caption": caption, "parse_mode": "HTML"}
+                if kb is not None:
+                    pl["reply_markup"] = kb
+                res = self.api("sendPhoto", pl, chat=chat)
+            if res and res.get("photo"):
+                return res["photo"][-1]["file_id"]
+        except Exception as e:  # noqa: BLE001 — сүрөт өтпөсө текст жөнөтүлөт
+            print("! sendPhoto: %s" % self.tg.redact(e))
+        return None
+
+    def send_card(self, chat, kind, lang, caption, kb=None):
+        """Туруктуу сүрөттөр (доступ ачылды / акысыз бүттү): ар бир тилге бир жолу тартылат, анан file_id."""
+        key = "card:%s:%s" % (kind, lang)
+        if not hasattr(self, "_cards"):
+            self._cards = {}
+        img = self._cards.get(key)
+        if img is None and CARDS is not None:
+            try:
+                img = CARDS.card_access(lang) if kind == "access" else CARDS.card_free_end(lang, FREE_SIGNALS)
+            except Exception as e:  # noqa: BLE001
+                print("! card %s: %s" % (kind, e))
+                img = None
+        if img is not None and len(caption) <= 1024:
+            fid = self.photo(chat, img, caption, kb)
+            if fid:
+                self._cards[key] = fid
+                return True
+        return self.send(chat, caption, kb)
+
     def send(self, chat, text, kb=None, preview=False):
         p = {"chat_id": chat, "text": text, "parse_mode": "HTML", "link_preview_options": {"is_disabled": not preview}}
         if kb is not None:
@@ -891,7 +955,7 @@ class App:
     def activate(self, u, how):
         uid = u["id"]
         u = self.db.upd(uid, status="active", verified_at=S.now_ms(), warned=0, step=None)
-        self.send(uid, T(u, "activated"), self.menu_kb(u))
+        self.send_card(uid, "access", u.get("lang") or "kg", T(u, "activated"), self.menu_kb(u))
         bal = (" · таза актив %.2f USDT" % u["balance"]) if u.get("balance") is not None else ""
         self.notify_admins("✅ <b>Доступ ачылды</b> (%s): %s · %s <code>%s</code>%s" % (E(how), self.user_link(u), E(u.get("broker") or ""), E(u.get("trader_id") or ""), bal))
         return True
@@ -937,7 +1001,7 @@ class App:
             lines.append("\n" + T(u, "free_tag", n=u["free_sent"], m=FREE_SIGNALS))
         self.send(uid, "\n".join(lines))
         if free and self.free_left(u) <= 0:
-            self.send(uid, T(u, "free_last", m=FREE_SIGNALS), ik([[(T(u, "btn_register"), "menu:register")]]))
+            self.send_card(uid, "free", u.get("lang") or "kg", T(u, "free_last", m=FREE_SIGNALS), ik([[(T(u, "btn_register"), "menu:register")]]))
         return True
 
     # ---------- Профиль ----------
@@ -1266,24 +1330,45 @@ class App:
         else:
             users = self.db.q("SELECT u.* FROM users u JOIN sig_sent s ON s.user_id=u.id WHERE s.sig_id=? AND u.status<>'blocked'", (sg["id"],))
         sent = 0
+        pics = {}                                        # тил → PNG же file_id (бир жолу тартылат)
+
+        def pic(lang):
+            if lang not in pics:
+                pics[lang] = None
+                if CARDS is not None and (kind == "signal" or sg.get("res") in (0, 1, 2)):
+                    try:
+                        pics[lang] = CARDS.card_signal(sg, sg.get("_cs"), lang) if kind == "signal" else CARDS.card_result(sg, hist, lang)
+                    except Exception as e:  # noqa: BLE001
+                        print("! card %s: %s" % (kind, e))
+            return pics[lang]
+
+        def deliver(chat, lang, text):
+            img = pic(lang)
+            if img is not None and len(text) <= 1024:
+                fid = self.photo(chat, img, text)
+                if fid:
+                    pics[lang] = fid
+                    return True
+            return self.send(chat, text)
+
         for u in users:
             lang = u.get("lang") or "kg"
             text = S.msg_signal(sg, lang) if kind == "signal" else S.msg_result(sg, hist, lang)
             free = kind == "signal" and u["status"] != "active"
             if free:
                 text += "\n\n" + T(u, "free_tag", n=(u.get("free_sent") or 0) + 1, m=FREE_SIGNALS)
-            if self.send(u["id"], text):
+            if deliver(u["id"], lang, text):
                 sent += 1
                 if kind == "signal":
                     self.db.x("INSERT OR IGNORE INTO sig_sent(sig_id,user_id) VALUES(?,?)", (sg["id"], u["id"]))
                 if free:
                     u2 = self.db.upd(u["id"], free_sent=(u.get("free_sent") or 0) + 1)
                     if self.free_left(u2) <= 0:
-                        self.send(u["id"], T(u2, "free_last", m=FREE_SIGNALS), ik([[(T(u2, "btn_register"), "menu:register")]]))
+                        self.send_card(u["id"], "free", lang, T(u2, "free_last", m=FREE_SIGNALS), ik([[(T(u2, "btn_register"), "menu:register")]]))
             time.sleep(0.04)
         if self.channel:
             lang = os.environ.get("TG_LANG", "kg")
-            if self.send(self.channel, S.msg_signal(sg, lang) if kind == "signal" else S.msg_result(sg, hist, lang)):
+            if deliver(self.channel, lang, S.msg_signal(sg, lang) if kind == "signal" else S.msg_result(sg, hist, lang)):
                 sent += 1
         print("  → %s: %d алуучу" % ("сигнал" if kind == "signal" else "жыйынтык", sent))
         return sent > 0

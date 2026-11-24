@@ -80,6 +80,9 @@ T = {
         "stats_few": "Боттун статистикасы: ✓{w} ✗{l} (азырынча аз, пайыз 10 сигналдан кийин)",
         "test": "✅ AITRADING.KG боту туташты. ⭐ сигналдар ушул чатка келет.\nЫктымалдык — кепилдик эмес. 18+",
         "gold": "Алтын (PAXG)",
+        "sig_h_fx": "СИГНАЛ · BinoDex · {m} мүн", "sig_h_bx": "СИГНАЛ · BingX спот · 1 саат",
+        "dir_w": "Багыт", "prob_w": "ыктымалдык", "time_w": "Убакыт", "model_w": "Модель", "open": "Графикти сайттан ачуу",
+        "r_win": "ПЛЮС", "r_loss": "МИНУС", "r_tie": "НӨЛ", "r_nodata": "ЭСЕПКЕ КИРБЕЙТ",
     },
     "ru": {
         "best_fx": "Лучший сигнал сейчас · {m} мин",
@@ -101,6 +104,9 @@ T = {
         "stats_few": "Статистика бота: ✓{w} ✗{l} (пока мало, процент — после 10 сигналов)",
         "test": "✅ Бот AITRADING.KG подключён. Сигналы ⭐ будут приходить в этот чат.\nЭто вероятность, а не гарантия. 18+",
         "gold": "Золото (PAXG)",
+        "sig_h_fx": "СИГНАЛ · BinoDex · {m} мин", "sig_h_bx": "СИГНАЛ · BingX спот · 1 час",
+        "dir_w": "Направление", "prob_w": "вероятность", "time_w": "Время", "model_w": "Модель", "open": "Открыть график на сайте",
+        "r_win": "ПЛЮС", "r_loss": "МИНУС", "r_tie": "НОЛЬ", "r_nodata": "НЕ В СТАТИСТИКЕ",
     },
 }
 
@@ -483,7 +489,8 @@ class Scanner:
         edge, dr = judge(ml)
         return {"base": base, "code": base[3:] if base.startswith("FX_") else None, "mkt": mkt, "name": name,
                 "p": ml["p"], "acc": ml["acc"], "bl": ml["base"], "edge": edge, "dir": dr, "n": ml["n"], "nTest": ml["nTest"],
-                "entry": d["entry"], "t": d["t"], "provider": d["provider"], "iv": d["iv"], "h": d["h"], "exp": exp}
+                "entry": d["entry"], "t": d["t"], "provider": d["provider"], "iv": d["iv"], "h": d["h"], "exp": exp,
+                "_cs": [{"time": c["time"], "open": c["open"], "high": c["high"], "low": c["low"], "close": c["close"]} for c in d["candles"][-64:]]}
 
     def binodex(self, exp):
         out, skipped = [], []
@@ -560,21 +567,29 @@ def dir_txt(sg, L):
     return ("▲ " + L["up"]) if sg["dir"] > 0 else ("▼ " + L["dn"])
 
 
+LINE = "━━━━━━━━━━━━━━"
+
+
 def msg_signal(sg, lang):
     L, fx, e = T[lang], sg["mkt"] == "binodex", html.escape
-    dp = pct(sg["p"] if sg["dir"] > 0 else 1 - sg["p"])
+    up = sg["dir"] > 0
+    dp = pct(sg["p"] if up else 1 - sg["p"])
     acc = L["acc"].format(a=pct(sg["acc"]), b=pct(sg["bl"]))
-    lines = ["⭐ <b>%s</b>" % e(L["best_fx"].format(m=sg["exp"]) if fx else L["best_bx"]),
-             "<b>%s</b> — %s · <b>%s</b>" % (e(sg["name"]), dir_txt(sg, L), dp)]
+    lines = ["🚀 <b>%s</b>" % e(L["sig_h_fx"].format(m=sg["exp"]) if fx else L["sig_h_bx"]), LINE,
+             "💎 <b>%s</b>" % e(sg["name"]),
+             "%s %s: <b>%s</b> · %s <b>%s</b>" % ("📈" if up else "📉", e(L["dir_w"]), dir_txt(sg, L), e(L["prob_w"]), dp)]
     if fx:
-        lines += [e(L["fx_line"].format(m=sg["exp"])),
-                  "%s: %s · %s → %s (Бишкек)" % (L["entry"], money(sg["entry"], True), hms(sg["t0"]), hms(sg["tEnd"])),
-                  "%s · %s" % (e(acc), e(L["quote"].format(p=sg["provider"], iv=sg["iv"])))]
+        lines += ["🎯 %s: <b>%s</b>" % (e(L["entry"]), money(sg["entry"], True)),
+                  "⏱ %s: <b>%s → %s</b> (Бишкек)" % (e(L["time_w"]), hms(sg["t0"]), hms(sg["tEnd"])),
+                  "🧠 %s: %s" % (e(L["model_w"]), e(acc)),
+                  "📡 " + e(L["quote"].format(p=sg["provider"], iv=sg["iv"]))]
     else:
-        lines += [e(L["bx_line"]),
-                  "%s: %s · %s (Бишкек)" % (L["price"], money(sg["entry"], False), hms(sg["t0"], False)),
-                  "%s · %s" % (e(acc), e(L["quote_bx"].format(p=sg["provider"])))]
-    lines += ["👉 " + e(link(sg)), "", e(L["honest"]), e(L["risk_fx"] if fx else L["risk_bx"])]
+        lines += ["🎯 %s: <b>%s</b> · %s (Бишкек)" % (e(L["price"]), money(sg["entry"], False), hms(sg["t0"], False)),
+                  "🕐 " + e(L["bx_line"]),
+                  "🧠 %s: %s" % (e(L["model_w"]), e(acc)),
+                  "📡 " + e(L["quote_bx"].format(p=sg["provider"]))]
+    lines += [LINE, '👉 <a href="%s">%s</a>' % (e(link(sg)), e(L["open"])),
+              "⚠️ <i>%s %s</i>" % (e(L["honest"]), e(L["risk_fx"] if fx else L["risk_bx"]))]
     return "\n".join(lines)
 
 
@@ -590,18 +605,24 @@ def stats_line(hist, lang):
 
 def msg_result(sg, hist, lang):
     L, fx, e = T[lang], sg["mkt"] == "binodex", html.escape
-    mark = {1: "✓", 0: "✗", 2: "=", 3: "—"}[sg["res"]]
-    what = {1: L["win"], 0: L["loss"], 2: L["tie"], 3: L["nodata"]}[sg["res"]]
+    res = sg["res"]
+    mark = {1: "✅", 0: "❌", 2: "➖", 3: "⚪"}[res]
+    head = {1: L["r_win"], 0: L["r_loss"], 2: L["r_tie"], 3: L["r_nodata"]}[res]
+    what = {1: L["win"], 0: L["loss"], 2: L["tie"], 3: L["nodata"]}[res]
     dur = ("%d %s" % (sg["exp"], L["min"])) if fx else L["h1"]
-    lines = ["%s <b>%s</b> · %s" % (mark, e(sg["name"]), e(what))]
-    if sg["res"] != 3:
-        lines.append("%s %s → %s · %s" % ("▲" if sg["dir"] > 0 else "▼", money(sg["entry"], fx), money(sg["exit"], fx), e(dur)))
+    arrow = "▲" if sg["dir"] > 0 else "▼"
+    lines = ["%s <b>%s</b> · <b>%s</b>" % (mark, e(head), e(sg["name"])), LINE]
+    if res != 3 and sg.get("exit") and sg.get("entry"):
+        ch = (sg["exit"] - sg["entry"]) / sg["entry"] * 100
+        lines.append("%s %s → <b>%s</b> (%s) · ⏱ %s" % (arrow, money(sg["entry"], fx), money(sg["exit"], fx),
+                                                     ("%+.3f%%" if abs(ch) < 1 else "%+.2f%%") % ch, e(dur)))
     else:
-        lines.append("%s %s · %s" % ("▲" if sg["dir"] > 0 else "▼", money(sg["entry"], fx), e(dur)))
+        lines.append("%s %s · ⏱ %s" % (arrow, money(sg["entry"], fx), e(dur)))
+    lines.append("🎯 " + e(what))
     s = stats_line(hist, lang)
     if s:
-        lines.append(e(s))
-    lines.append(e(L["honest"]))
+        lines.append("📊 " + e(s))
+    lines.append("<i>%s</i>" % e(L["honest"]))
     return "\n".join(lines)
 
 
@@ -836,13 +857,16 @@ class Bot:
                     d = live_fx(sg["code"], sg["exp"], {})
                     if d["provider"] == sg["provider"]:
                         sg["entry"], sg["t"] = d["entry"], d["t"]
+                        sg["_cs"] = [{"time": c["time"], "open": c["open"], "high": c["high"], "low": c["low"], "close": c["close"]} for c in d["candles"][-64:]]
                 except Exception:  # noqa: BLE001 — сканердеги баа калат
                     pass
             sg["id"] = now_ms()
             sg["t0"] = sg["t"]
             sg["tEnd"] = sg["t0"] + sg["exp"] * 60000
             sg["res"], sg["exit"] = None, None
-            if self.publish("signal", sg):
+            ok = self.publish("signal", sg)
+            sg.pop("_cs", None)                           # шамдар — сүрөт үчүн гана, абал файлына жазылбайт
+            if ok:
                 self.st["last"] = {"key": k, "t": now_ms()}
                 self.st["pending"].append(sg)
                 cand = self.st.get("cand", {})
