@@ -29,3 +29,7 @@
 .gt-have, .gt-note { margin: 4px 0 0; color: var(--muted); font-size: 0.8rem; line-height: 1.45; }
 .best-it.gt-locked .best-dir, .best-it.gt-locked .best-p, .sig-best.gt-locked b { color: var(--muted); }
 @media (max-width: 640px) { .ld-modal { padding: 0; place-items: end stretch; } .ld-win { width: 100%; border-radius: 20px 20px 0 0; padding-bottom: calc(20px + env(safe-area-inset-bottom)); } .ld-act .btn, .gt-act .btn { flex: 1 1 100%; justify-content: center; } }
+
+/* ИИ-анализ: таймфреймдер толук сөз менен («15 мүнөт», «1 саат»…) — тар экранда кийинки сапка түшөт */
+.aia-tf { flex-wrap: wrap; max-width: 100%; }
+.aia-tf button { white-space: nowrap; }
