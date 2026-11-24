@@ -248,12 +248,25 @@ def main():
     stocks.sort(key=lambda r: -r["vol"])
     stock_set = {s["base"] for s in stocks}
 
-    # 2) Binance'те да бар криптолор — сайт аларды Binance'тен жандуу жүктөйт
-    try:
-        bn = get("https://api.binance.com/api/v3/ticker/price")
-        binance = sorted({x["symbol"][:-4] for x in bn if x["symbol"].endswith("USDT")} & set(online) - stock_set)
-    except Exception:  # noqa: BLE001
-        binance = []
+    # 2) Binance'те да бар криптолор — сайт аларды Binance'тен жандуу жүктөйт.
+    #    GitHub Actions АКШда иштейт, api.binance.com аны бөгөттөйт (451) — анда расмий маалымат күзгүсү data-api.binance.vision.
+    #    Экөө тең жооп бербесе — мурунку тизме калат (бош тизме сайттагы 15м/4с/1к баскычтарын өчүрүп салат).
+    binance = []
+    for host in ("https://api.binance.com", "https://data-api.binance.vision"):
+        try:
+            bn = get(host + "/api/v3/ticker/price")
+            binance = sorted({x["symbol"][:-4] for x in bn if x["symbol"].endswith("USDT")} & set(online) - stock_set)
+            if binance:
+                break
+        except Exception as e:  # noqa: BLE001
+            print("binance %s: %s" % (host, e))
+    if not binance:
+        try:
+            with open(OUT, encoding="utf-8") as f:
+                binance = json.load(f).get("binance") or []
+            print("binance: мурунку тизме калды (%d)" % len(binance))
+        except (OSError, ValueError):
+            binance = []
 
     top = sorted(
         ({"base": b, "last": num(t.get("lastPrice")), "chg": num(t.get("priceChangePercent")), "vol": round(num(t.get("quoteVolume")))}
