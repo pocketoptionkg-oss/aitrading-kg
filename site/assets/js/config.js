@@ -41,7 +41,7 @@ window.AITRADING_CONFIG = {
   /* TELEGRAM-БОТ: @BotFather'де түзгөн ботуңуздун шилтемеси, мисалы "https://t.me/aitrading_kg_bot".
      Бош болсо — «Ботко кирүү» баскычтары «бот жакында ачылат» дейт.
      Ссылка на вашего бота, например "https://t.me/aitrading_kg_bot". Пусто — кнопки пишут «бот скоро откроется». */
-  TELEGRAM_BOT_URL: "",
+  TELEGRAM_BOT_URL: "https://t.me/TRADERKG_AI_Bot",
 
   /* ВИДЕО-НУСКАМАЛАР / ВИДЕОИНСТРУКЦИИ — ар бир кадамдын астында кыска видео («Окуу» жана «Катталуу» беттеринде, ботто да).
      Кое турган нерсе: YouTube шилтемеси (https://youtu.be/…, https://www.youtube.com/watch?v=…, …/shorts/…)
