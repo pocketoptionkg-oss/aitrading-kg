@@ -183,15 +183,16 @@ def png(img):
 
 
 # ---------------------------------------------------------------- график
-def chart(d, box, cs, entry, up, col, fx):
+def chart(d, box, cs, entry, up, col, fx, levels=None):
     x0, y0, x1, y1 = box
     d.rounded_rectangle(S(x0, y0, x1, y1), radius=18 * K, fill=mix(C["bg"], C["panel"], 0.85), outline=C["line"], width=2 * K)
     cs = [c for c in (cs or []) if c.get("high") is not None][-64:]
     if len(cs) < 5:
         return
     px0, px1, py0, py1 = x0 + 18, x1 - 120, y0 + 24, y1 - 24
-    lo = min(c["low"] for c in cs + [{"low": entry}])
-    hi = max(c["high"] for c in cs + [{"high": entry}])
+    lv = levels or []
+    lo = min([c["low"] for c in cs] + [entry] + [v for v, _, _ in lv])
+    hi = max([c["high"] for c in cs] + [entry] + [v for v, _, _ in lv])
     pad = (hi - lo) * 0.08 or hi * 0.001
     lo, hi = lo - pad, hi + pad
 
@@ -214,6 +215,14 @@ def chart(d, box, cs, entry, up, col, fx):
         if bot - top < 1:
             bot = top + 1
         d.rectangle(S(x - bw / 2, top, x + bw / 2, bot), fill=cc)
+    for v, lc, lab in lv:                                               # стоп / тейктер
+        yv = Y(v)
+        xx = px0
+        while xx < px1:
+            d.line(S(xx, yv, min(xx + 7, px1), yv), fill=lc, width=2 * K)
+            xx += 13
+        d.rounded_rectangle(S(px1 + 6, yv - 13, x1 - 10, yv + 13), radius=7 * K, fill=mix(C["bg"], lc, 0.35), outline=lc, width=1 * K)
+        d.text(S((px1 + x1) / 2 - 2, yv), lab, font=font(13, True), fill=C["text"], anchor="mm")
     ye = Y(entry)                                                       # кирүү сызыгы (пунктир)
     x = px0
     while x < px1:
@@ -261,6 +270,58 @@ def card_signal(sg, cs, lang="kg"):
         y += 34
     d.text(S(x, y + 4), L["model"].format(a=pct(sg["acc"]), b=pct(sg["bl"])), font=fit(d, L["model"].format(a=pct(sg["acc"]), b=pct(sg["bl"])), 18, r - x, False, 13), fill=C["dim"])
     footer(d, lang)
+    return png(img)
+
+
+FUT = {
+    "kg": {"long": "ЛОНГ", "short": "ШОРТ", "h_short": "ФЬЮЧЕРС · КЫСКА", "h_mid": "ФЬЮЧЕРС · ОРТО", "zone": "Кирүү", "sl": "Стоп",
+           "tp1": "TP1", "tp2": "TP2", "rr": "Тобокелдик/пайда", "tf_short": "15 мүн · 8 саатка чейин", "tf_mid": "4 саат · 4 күнгө чейин",
+           "foot": "Плечо 1–3x · 1–2% депозит · кепилдик эмес · 18+"},
+    "ru": {"long": "ЛОНГ", "short": "ШОРТ", "h_short": "ФЬЮЧЕРС · КРАТКОСРОК", "h_mid": "ФЬЮЧЕРС · СРЕДНЕСРОК", "zone": "Вход", "sl": "Стоп",
+           "tp1": "TP1", "tp2": "TP2", "rr": "Риск/прибыль", "tf_short": "15 мин · до 8 часов", "tf_mid": "4 часа · до 4 дней",
+           "foot": "Плечо 1–3x · 1–2% депозита · не гарантия · 18+"},
+}
+
+
+def card_futures(tr, cs, lang="kg", label=None):
+    """BingX фьючерс: график + кирүү/стоп/TP1/TP2 сызыктары, оң жакта лонг/шорт жана деңгээлдер."""
+    L, F = TXT.get(lang, TXT["kg"]), FUT.get(lang, FUT["kg"])
+    up = tr["dir"] > 0
+    col = C["mint"] if up else C["red"]
+    img = background(col)
+    d = ImageDraw.Draw(img)
+    brand(d, lang, tr.get("t0"))
+    lv = [(tr["sl"], C["red"], "SL"), (tr["tp1"], C["mint"], "TP1"), (tr["tp2"], C["mint"], "TP2")]
+    chart(d, (48, 120, 800, 630), cs, tr["entry"], up, col, False, lv)
+    x, r = 830, W - 48
+    head = F["h_" + tr["hz"]]
+    hw = 40 + tw(d, head, font(18, True))
+    d.rounded_rectangle(S(x, 120, x + hw, 158), radius=19 * K, outline=C["yellow"], width=2 * K)
+    d.text(S(x + hw / 2, 139), head, font=font(18, True), fill=C["yellow"], anchor="mm")
+    name = label or (tr["sym"] + "/USDT")
+    d.text(S(x, 172), name, font=fit(d, name, 46, r - x), fill=C["text"])
+    d.text(S(x, 232), "BingX · " + F["tf_" + tr["hz"]], font=fit(d, "BingX · " + F["tf_" + tr["hz"]], 20, r - x, False, 14), fill=C["muted"])
+    lab = F["long"] if up else F["short"]
+    pw = 90 + tw(d, lab, font(30, True))
+    d.rounded_rectangle(S(x, 270, x + pw, 326), radius=28 * K, fill=mix(C["bg"], col, 0.22), outline=col, width=2 * K)
+    tri(d, x + 34, 298, 13, up, col)
+    d.text(S(x + 60, 298), lab, font=font(30, True), fill=col, anchor="lm")
+    p = tr["p"] if up else 1 - tr["p"]
+    d.text(S(x + pw + 22, 284), pct(p), font=font(40, True), fill=col)
+    rows = [(F["zone"], "%s – %s" % (money(tr["zone"][0], False), money(tr["zone"][1], False)), C["yellow"]),
+            (F["sl"], money(tr["sl"], False), C["red"]), (F["tp1"], money(tr["tp1"], False), C["mint"]), (F["tp2"], money(tr["tp2"], False), C["mint"]),
+            (F["rr"], "1 : 1.5  /  1 : 3", C["text"])]
+    y = 350
+    for k, v, vc in rows:
+        d.text(S(x, y), k, font=font(20), fill=C["muted"])
+        d.text(S(r, y), v, font=fit(d, v, 22, r - x - 110, True, 14), fill=vc, anchor="ra")
+        d.line(S(x, y + 34, r, y + 34), fill=C["line"], width=1 * K)
+        y += 46
+    m = L["model"].format(a=pct(tr["acc"]), b=pct(tr["bl"]))
+    d.text(S(x, y + 6), m, font=fit(d, m, 17, r - x, False, 12), fill=C["dim"])
+    d.line(S(48, H - 64, W - 48, H - 64), fill=C["line"], width=2 * K)
+    d.text(S(48, H - 42), F["foot"], font=font(19), fill=C["muted"], anchor="lm")
+    d.text(S(W - 48, H - 42), "aitrading.kg", font=font(22, True), fill=C["yellow"], anchor="rm")
     return png(img)
 
 

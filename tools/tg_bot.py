@@ -372,6 +372,18 @@ TX_GATE = {
 }
 for _l, _d in TX_GATE.items():
     TX[_l].update(_d)
+TX_CH = {
+    "kg": {"btn_channel": "🔐 Жабык каналга кирүү", "ch_invite": "🔐 <b>{b} жабык каналы</b> сиз үчүн ачык.\nШилтеме жеке жана бир жолку (24 саат). Аны эч кимге бербеңиз.",
+           "ch_none": "Жабык канал азырынча даярдалып жатат — сигналдар ушул чатка келет."},
+    "ru": {"btn_channel": "🔐 Войти в закрытый канал", "ch_invite": "🔐 <b>Закрытый канал {b}</b> открыт для вас.\nСсылка личная и одноразовая (24 часа). Никому её не передавайте.",
+           "ch_none": "Закрытый канал ещё готовится — сигналы будут приходить в этот чат."},
+}
+for _l, _d in TX_CH.items():
+    TX[_l].update(_d)
+try:
+    import tg_futures as FUT  # noqa: E402  — BingX фьючерс сигналдары
+except Exception:  # noqa: BLE001
+    FUT = None
 
 
 def _multipart(fields, files):
@@ -757,6 +769,13 @@ class App:
         if "callback_query" in upd:
             return self.on_callback(upd["callback_query"])
         mcm = upd.get("my_chat_member")
+        if mcm and mcm.get("chat", {}).get("type") in ("channel", "supergroup"):
+            return self.on_channel(mcm)
+        if upd.get("channel_post"):
+            cp = upd["channel_post"].get("chat") or {}
+            if cp.get("id") and not self.db.kv("chseen:%s" % cp["id"]):
+                self.on_channel({"chat": cp, "new_chat_member": {"status": "administrator"}})
+            return None
         if mcm and mcm.get("chat", {}).get("type") == "private":
             st = (mcm.get("new_chat_member") or {}).get("status")
             u = self.db.user(mcm["chat"]["id"])
@@ -956,6 +975,7 @@ class App:
         uid = u["id"]
         u = self.db.upd(uid, status="active", verified_at=S.now_ms(), warned=0, step=None)
         self.send_card(uid, "access", u.get("lang") or "kg", T(u, "activated"), self.menu_kb(u))
+        self.send_invite(u)
         bal = (" · таза актив %.2f USDT" % u["balance"]) if u.get("balance") is not None else ""
         self.notify_admins("✅ <b>Доступ ачылды</b> (%s): %s · %s <code>%s</code>%s" % (E(how), self.user_link(u), E(u.get("broker") or ""), E(u.get("trader_id") or ""), bal))
         return True
@@ -977,7 +997,8 @@ class App:
         if self.db.kv("signals_paused"):
             head += "\n" + T(u, "paused")
         return self.send(uid, head + tail, ik([[(T(u, "btn_now"), "sig:now"), (T(u, "btn_off"), "sig:off") if u.get("signals") else (T(u, "btn_on"), "sig:on")],
-                                               [(T(u, "btn_site_sig"), site_access_url(uid))]]))
+                                               [(T(u, "btn_site_sig"), site_access_url(uid))],
+                                               [(T(u, "btn_channel"), "chinv")] if self.channel_for(u) else []]))
 
     def show_now(self, u):
         uid = u["id"]
@@ -1035,6 +1056,8 @@ class App:
             if not self.is_admin(uid):
                 return None
             return self.on_admin_cb(u, data, msg)
+        if data == "chinv":
+            return self.send_invite(u)
         if data.startswith("reg:"):
             return self.show_broker(u, data[4:])
         if data.startswith("sendid:"):
@@ -1164,6 +1187,7 @@ class App:
                 return self.send(aid, "❌ Четке кагылды: " + self.card(self.db.user(tid)))
             if act == "stop":
                 self.db.upd(tid, status="suspended")
+                self.kick(t)
                 return self.send(aid, "⛔ Токтотулду: " + self.card(self.db.user(tid)))
             if act == "chk":
                 if not self.bingx.ok():
@@ -1325,8 +1349,9 @@ class App:
         if kind == "signal":
             if self.db.kv("signals_paused"):
                 return False
-            users = self.db.q("SELECT * FROM users WHERE signals=1 AND (status='active' OR (status IN ('new','wait_dep','pending','rejected') "
-                              "AND COALESCE(free_sent,0)<?))", (FREE_SIGNALS,))
+            ch_on = 1 if self.db.kv("ch:" + sg["mkt"]) else 0     # канал бар — активдүүлөр сигналды каналдан алат
+            users = self.db.q("SELECT * FROM users WHERE signals=1 AND ((status='active' AND (broker=? OR broker='admin') AND ?=0) "
+                              "OR (status IN ('new','wait_dep','pending','rejected') AND COALESCE(free_sent,0)<?))", (sg["mkt"], ch_on, FREE_SIGNALS))
         else:
             users = self.db.q("SELECT u.* FROM users u JOIN sig_sent s ON s.user_id=u.id WHERE s.sig_id=? AND u.status<>'blocked'", (sg["id"],))
         sent = 0
@@ -1366,9 +1391,10 @@ class App:
                     if self.free_left(u2) <= 0:
                         self.send_card(u["id"], "free", lang, T(u2, "free_last", m=FREE_SIGNALS), ik([[(T(u2, "btn_register"), "menu:register")]]))
             time.sleep(0.04)
-        if self.channel:
+        chan = self.db.kv("ch:" + sg.get("mkt", "")) or self.channel
+        if chan:
             lang = os.environ.get("TG_LANG", "kg")
-            if deliver(self.channel, lang, S.msg_signal(sg, lang) if kind == "signal" else S.msg_result(sg, hist, lang)):
+            if deliver(chan, lang, S.msg_signal(sg, lang) if kind == "signal" else S.msg_result(sg, hist, lang)):
                 sent += 1
         print("  → %s: %d алуучу" % ("сигнал" if kind == "signal" else "жыйынтык", sent))
         return sent > 0
@@ -1382,6 +1408,7 @@ class App:
             d = ago_days(u["last_seen"])
             if d >= ACCESS_DAYS:
                 self.db.upd(u["id"], status="suspended")
+                self.kick(u)
                 self.send(u["id"], T(u, "susp_now", days=ACCESS_DAYS))
             elif d >= WARN_DAYS and not u.get("warned"):
                 self.db.upd(u["id"], warned=1)
@@ -1409,6 +1436,82 @@ class App:
                 print("! сигнал сканери: %s" % self.tg.redact(e))
                 w = 30
             time.sleep(w)
+
+    # ---------- Жабык каналдар ----------
+    def on_channel(self, mcm):
+        ch = mcm.get("chat") or {}
+        cid, title = ch.get("id"), (ch.get("title") or "")
+        st = (mcm.get("new_chat_member") or {}).get("status")
+        low = title.lower()
+        kind = "binodex" if ("binodex" in low or "бинодекс" in low) else "bingx" if ("bingx" in low or "бингх" in low) else None
+        self.db.kv_set("chseen:%s" % cid, 1)
+        if st in ("administrator", "creator") and kind:
+            self.db.kv_set("ch:" + kind, cid)
+            self.notify_admins("📢 Канал туташты: <b>%s</b> → %s сигналдары. Бот админ ✓" % (E(title), "BingX" if kind == "bingx" else "BinoDex"))
+        elif st in ("left", "kicked", "member") and kind and self.db.kv("ch:" + kind) == cid:
+            self.db.kv_set("ch:" + kind, None)
+            self.notify_admins("⚠️ Бот <b>%s</b> каналынан чыгарылды же админ эмес — канал өчүрүлдү." % E(title))
+        elif st in ("administrator", "creator"):
+            self.notify_admins("ℹ️ Бот <b>%s</b> каналында админ, бирок аталышында BingX же BinoDex жок — кайсы сигнал экенин билбейт." % E(title))
+        return True
+
+    def channel_for(self, u):
+        b = u.get("broker")
+        return self.db.kv("ch:" + b) if b in ("bingx", "binodex") else None
+
+    def invite_link(self, u):
+        cid = self.channel_for(u)
+        if not cid:
+            return None
+        r = self.api("createChatInviteLink", {"chat_id": cid, "name": "u%d" % u["id"], "member_limit": 1, "expire_date": int(time.time()) + 86400})
+        return (r or {}).get("invite_link")
+
+    def send_invite(self, u):
+        if u.get("status") != "active":
+            return None
+        link = self.invite_link(u)
+        b = "BingX" if u.get("broker") == "bingx" else "BinoDex"
+        if not link:
+            return self.send(u["id"], T(u, "ch_none")) if u.get("broker") in ("bingx", "binodex") else None
+        return self.send(u["id"], T(u, "ch_invite", b=b), ik([[(T(u, "btn_channel"), link)]]))
+
+    def kick(self, u):
+        cid = self.channel_for(u)
+        if cid:
+            self.api("banChatMember", {"chat_id": cid, "user_id": u["id"], "until_date": int(time.time()) + 60})
+            self.api("unbanChatMember", {"chat_id": cid, "user_id": u["id"], "only_if_banned": True})
+
+    # ---------- BingX фьючерс сигналдары ----------
+    def fut_publish(self, kind, tr, extra):
+        lang = os.environ.get("TG_LANG", "kg")
+        chan = self.db.kv("ch:bingx")
+        targets = [chan] if chan else [a for a in self.admins]          # канал жок болсо — админге көрүү үчүн
+        for chat in targets:
+            if kind == "signal":
+                text = FUT.msg_signal(tr, lang)
+                mid = None
+                if CARDS is not None and extra.get("cs"):
+                    try:
+                        img = CARDS.card_futures(tr, extra["cs"], lang, FUT.label(tr["sym"]))
+                        if len(text) <= 1024:
+                            fid = self.photo(chat, img, text)
+                            mid = fid and True
+                    except Exception as e:  # noqa: BLE001
+                        print("! fut card: %s" % e)
+                if not mid:
+                    self.send(chat, text)
+            else:
+                self.send(chat, FUT.msg_update(tr, extra["kind"], extra["price"], extra.get("hist") or [], lang))
+
+    def loop_futures(self):
+        desk = FUT.Desk(lambda: self.db.kv("fut"), lambda st: self.db.kv_set("fut", st), self.fut_publish)
+        while True:
+            try:
+                if not self.db.kv("signals_paused"):
+                    desk.tick()
+            except Exception as e:  # noqa: BLE001
+                print("! futures: %s" % self.tg.redact(e))
+            time.sleep(60)
 
     def free_left(self, u):
         return max(0, FREE_SIGNALS - int(u.get("free_sent") or 0))
@@ -1500,10 +1603,12 @@ class App:
             threading.Thread(target=self.loop_signals, daemon=True).start()
         threading.Thread(target=self.loop_maint, daemon=True).start()
         threading.Thread(target=self.loop_leads, daemon=True).start()
+        if FUT is not None and self.engine and os.environ.get("TG_FUTURES", "1") != "0":
+            threading.Thread(target=self.loop_futures, daemon=True).start()
         offset = int(self.db.kv("offset") or 0)
         while True:
             try:
-                r = self.tg.call("getUpdates", {"offset": offset, "timeout": 25, "allowed_updates": ["message", "callback_query", "my_chat_member"]}, timeout=40)
+                r = self.tg.call("getUpdates", {"offset": offset, "timeout": 25, "allowed_updates": ["message", "callback_query", "my_chat_member", "channel_post"]}, timeout=40)
             except S.Fetch as e:
                 m = str(e)
                 if "Conflict" in m:
