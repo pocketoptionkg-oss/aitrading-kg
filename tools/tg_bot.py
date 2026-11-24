@@ -380,6 +380,20 @@ TX_CH = {
 }
 for _l, _d in TX_CH.items():
     TX[_l].update(_d)
+TX["kg"].update({"join_need": "🔐 <b>{b} жабык каналы</b> — команданын мүчөлөрү үчүн гана.\nКирүү үчүн: биздин шилтеме менен {b}'де катталыңыз, эсепти толуктаңыз жана ID'ни ботко жибериңиз — текшерилгенден кийин бот өзү шилтеме берет.",
+                 "btn_open_bot": "🤖 Ботту ачуу"})
+TX["ru"].update({"join_need": "🔐 <b>Закрытый канал {b}</b> — только для участников команды.\nЧтобы войти: зарегистрируйтесь в {b} по нашей ссылке, пополните счёт и отправьте ID в бот — после проверки бот сам даст ссылку.",
+                 "btn_open_bot": "🤖 Открыть бота"})
+
+
+def channel_kind(title):
+    """Каналдын аталышынан: BinoDex же BingX (фьючерс) каналыбы."""
+    low = (title or "").lower()
+    if any(w in low for w in ("binodex", "бинодекс", "бинодэкс", "bino")):
+        return "binodex"
+    if any(w in low for w in ("bingx", "бингх", "бингикс", "фьючерс", "futures", "фьюч")):
+        return "bingx"
+    return None
 try:
     import tg_futures as FUT  # noqa: E402  — BingX фьючерс сигналдары
 except Exception:  # noqa: BLE001
@@ -771,9 +785,11 @@ class App:
         mcm = upd.get("my_chat_member")
         if mcm and mcm.get("chat", {}).get("type") in ("channel", "supergroup"):
             return self.on_channel(mcm)
+        if upd.get("chat_join_request"):
+            return self.on_join_request(upd["chat_join_request"])
         if upd.get("channel_post"):
             cp = upd["channel_post"].get("chat") or {}
-            if cp.get("id") and not self.db.kv("chseen:%s" % cp["id"]):
+            if cp.get("id") and cp["id"] not in (self.db.kv("ch:bingx"), self.db.kv("ch:binodex")) and channel_kind(cp.get("title")):
                 self.on_channel({"chat": cp, "new_chat_member": {"status": "administrator"}})
             return None
         if mcm and mcm.get("chat", {}).get("type") == "private":
@@ -1443,7 +1459,7 @@ class App:
         cid, title = ch.get("id"), (ch.get("title") or "")
         st = (mcm.get("new_chat_member") or {}).get("status")
         low = title.lower()
-        kind = "binodex" if ("binodex" in low or "бинодекс" in low) else "bingx" if ("bingx" in low or "бингх" in low) else None
+        kind = channel_kind(title)
         self.db.kv_set("chseen:%s" % cid, 1)
         if st in ("administrator", "creator") and kind:
             self.db.kv_set("ch:" + kind, cid)
@@ -1454,6 +1470,28 @@ class App:
         elif st in ("administrator", "creator"):
             self.notify_admins("ℹ️ Бот <b>%s</b> каналында админ, бирок аталышында BingX же BinoDex жок — кайсы сигнал экенин билбейт." % E(title))
         return True
+
+    def on_join_request(self, rq):
+        """Кошулуу өтүнүчү: текшерүүдөн өткөн (катталуу + толуктоо) жана брокери туура келсе — ырастоо, болбосо — четке кагуу + түшүндүрмө."""
+        cid = (rq.get("chat") or {}).get("id")
+        fr = rq.get("from") or {}
+        uid = fr.get("id")
+        kind = "bingx" if self.db.kv("ch:bingx") == cid else "binodex" if self.db.kv("ch:binodex") == cid else None
+        if not cid or not uid or not kind:
+            return None
+        u = self.db.user(uid)
+        ok = bool(u) and (self.is_admin(uid) or (u["status"] == "active" and u.get("broker") == kind))
+        if ok:
+            self.api("approveChatJoinRequest", {"chat_id": cid, "user_id": uid})
+            return True
+        self.api("declineChatJoinRequest", {"chat_id": cid, "user_id": uid})
+        lang = (u or {}).get("lang") or ("ru" if (fr.get("language_code") or "").startswith("ru") else "kg")
+        b = "BingX" if kind == "bingx" else "BinoDex"
+        text = TX[lang]["join_need"].format(b=b)
+        kb = ik([[(TX[lang]["btn_open_bot"], "https://t.me/%s?start=join_%s" % (self.username or "", kind))]]) if self.username else None
+        self.api("sendMessage", {"chat_id": uid, "text": text, "parse_mode": "HTML", "reply_markup": kb} if kb else
+                 {"chat_id": uid, "text": text, "parse_mode": "HTML"}, chat=uid)
+        return False
 
     def channel_for(self, u):
         b = u.get("broker")
@@ -1608,7 +1646,7 @@ class App:
         offset = int(self.db.kv("offset") or 0)
         while True:
             try:
-                r = self.tg.call("getUpdates", {"offset": offset, "timeout": 25, "allowed_updates": ["message", "callback_query", "my_chat_member", "channel_post"]}, timeout=40)
+                r = self.tg.call("getUpdates", {"offset": offset, "timeout": 25, "allowed_updates": ["message", "callback_query", "my_chat_member", "channel_post", "chat_join_request"]}, timeout=40)
             except S.Fetch as e:
                 m = str(e)
                 if "Conflict" in m:
