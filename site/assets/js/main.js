@@ -230,7 +230,8 @@
   function initPanels() {
     if (!document.getElementById("spanel")) return;
     document.addEventListener("click", function (e) {
-      var p = e.target.closest("[data-panel]");
+      // Баскычтар гана (forecast.html'деги <section data-panel="ai|pro"> бул эмес — алар каалаган басууда календарды ачып жатчу)
+      var p = e.target.closest('button[data-panel="calendar"], button[data-panel="bot"], a[data-panel="calendar"], a[data-panel="bot"]');
       if (p) {
         e.preventDefault();
         sheet(false);
