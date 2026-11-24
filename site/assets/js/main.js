@@ -252,9 +252,7 @@
       document.documentElement.classList.toggle("sp-dock", isWide());
       document.querySelector(".sp-back").hidden = isWide();
     });
-    // Кең экранда — FastBull'дагыдай календарь демейки ачык; колдонуучу жапса, эсте калат
-    var saved = store(PANEL_KEY);
-    if (isWide() && saved !== "none") panelOpen(saved === "bot" ? "bot" : "calendar", false);
+    // Панель өзү ачылбайт: «Календарь» же «Бот» баскычын басканда гана (мурун кең экранда ар бир бетте өзү ачылчу)
   }
 
   /* Telegram-бот шилтемеси (config.js → TELEGRAM_BOT_URL). Бош болсо — «жакында». */
