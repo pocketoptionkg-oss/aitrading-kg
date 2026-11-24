@@ -789,7 +789,7 @@ class App:
             return self.on_join_request(upd["chat_join_request"])
         if upd.get("channel_post"):
             cp = upd["channel_post"].get("chat") or {}
-            if cp.get("id") and cp["id"] not in (self.db.kv("ch:bingx"), self.db.kv("ch:binodex")) and channel_kind(cp.get("title")):
+            if cp.get("id") and cp["id"] not in (self.db.kv("ch:bingx"), self.db.kv("ch:binodex")) and (channel_kind(cp.get("title")) or not self.db.kv("chask:%s" % cp["id"])):
                 self.on_channel({"chat": cp, "new_chat_member": {"status": "administrator"}})
             return None
         if mcm and mcm.get("chat", {}).get("type") == "private":
@@ -1072,6 +1072,12 @@ class App:
             if not self.is_admin(uid):
                 return None
             return self.on_admin_cb(u, data, msg)
+        if data.startswith("chset:") and self.is_admin(uid):
+            _, kind, cid = data.split(":", 2)
+            if kind in ("bingx", "binodex") and re.match(r"^-?\d+$", cid):
+                self.db.kv_set("ch:" + kind, int(cid))
+                return self.send(uid, "✅ Канал → %s ✓" % ("BingX (фьючерс)" if kind == "bingx" else "BinoDex"))
+            return None
         if data == "chinv":
             return self.send_invite(u)
         if data.startswith("reg:"):
@@ -1468,7 +1474,9 @@ class App:
             self.db.kv_set("ch:" + kind, None)
             self.notify_admins("⚠️ Бот <b>%s</b> каналынан чыгарылды же админ эмес — канал өчүрүлдү." % E(title))
         elif st in ("administrator", "creator"):
-            self.notify_admins("ℹ️ Бот <b>%s</b> каналында админ, бирок аталышында BingX же BinoDex жок — кайсы сигнал экенин билбейт." % E(title))
+            self.db.kv_set("chask:%s" % cid, 1)
+            self.notify_admins("📢 Бот <b>%s</b> каналында админ. Бул канал кайсы сигналдар үчүн? / Для каких сигналов этот канал?" % E(title),
+                               ik([[("📈 BingX (фьючерс)", "chset:bingx:%s" % cid), ("⚡ BinoDex", "chset:binodex:%s" % cid)]]))
         return True
 
     def on_join_request(self, rq):
