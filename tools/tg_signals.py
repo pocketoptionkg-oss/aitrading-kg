@@ -884,8 +884,40 @@ def ask(prompt, secret=False):
         return None
 
 
+ENV_FILE = os.environ.get("AITRADING_ENV") or "/etc/aitrading/bot.env"
+
+
+def save_env_file(name, value, path=None):
+    """Linux сервер: systemd'дин EnvironmentFile'ы (deploy/server/install.sh). Укугу 600 — ээси гана окуйт."""
+    path = path or ENV_FILE
+    lines = []
+    try:
+        with open(path, encoding="utf-8") as f:
+            lines = [l for l in f.read().splitlines() if not l.startswith(name + "=")]
+    except OSError:
+        pass
+    lines.append("%s=%s" % (name, value))
+    d = os.path.dirname(path)
+    if d and not os.path.isdir(d):
+        os.makedirs(d, mode=0o700, exist_ok=True)
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
+        f.write("\n".join(lines) + "\n")
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass
+    os.environ[name] = value
+
+
+def where_saved():
+    return "Windows'ко" if os.name == "nt" else ENV_FILE + " файлына (600)"
+
+
 def save_user_env(name, value):
-    """Windows: колдонуучунун чөйрө өзгөрмөсү (setx сыяктуу, HKCU\\Environment). Файлга жазылбайт."""
+    """Windows: колдонуучунун чөйрө өзгөрмөсү (setx сыяктуу, HKCU\\Environment). Linux: ENV_FILE."""
+    if os.name != "nt":
+        return save_env_file(name, value)
     import winreg
     with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment", 0, winreg.KEY_SET_VALUE) as k:
         winreg.SetValueEx(k, name, 0, winreg.REG_SZ, value)
@@ -905,9 +937,7 @@ def cmd_setup(lang):
     print(" 2. BotFather берген ТОКЕНди көчүрүңүз. Аны эч кимге көрсөтпөңүз жана эч бир чатка жазбаңыз.")
     print(" 3. Өзүңүздүн жаңы ботуңузду ачып, Start басыңыз.\n")
     if os.name != "nt":
-        print("Бул сервер Windows эмес. Токенди чөйрө өзгөрмөсүнө коюңуз:\n"
-              "  export TELEGRAM_BOT_TOKEN=...   export TELEGRAM_CHAT_ID=...\n(же systemd'деги EnvironmentFile). chat_id: --chat-id")
-        return 2
+        print(" Сервер (Linux): ачкычтар %s сакталат, бот systemd аркылуу ошол файлдан окуйт.\n" % ENV_FILE)
     old = (os.environ.get("TELEGRAM_BOT_TOKEN") or "").strip()
     tok = ask("Токенди коюңуз (оң баскыч же Ctrl+V; экранда көрүнбөйт)%s жана Enter: " % (", Enter — мурункусун калтыруу" if old else ""), secret=True)
     tok = tok or old
@@ -928,7 +958,7 @@ def cmd_setup(lang):
     print("Бот табылды: @%s ✓  (токен %s…, %d белги)" % (user, tok.split(":")[0], len(tok)))
     if tok != old:
         save_user_env("TELEGRAM_BOT_TOKEN", tok)
-        print("Токен Windows'ко сакталды (файлдарга жазылган жок).")
+        print("Токен %s сакталды (сайттын файлдарына жазылган жок)." % where_saved())
     chats = {}
     for _ in range(10):
         try:
