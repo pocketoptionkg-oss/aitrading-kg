@@ -774,6 +774,8 @@ class App:
                       (uid, fr.get("username"), fr.get("first_name"), lang, now, now, src, st, "admin" if st == "active" else None, now if st == "active" else None))
             u = self.db.user(uid)
         kw = {"last_seen": now, "warned": 0, "username": fr.get("username"), "first_name": fr.get("first_name")}
+        if self.is_admin(uid) and (u["status"] != "active" or u.get("broker") != "admin"):
+            kw.update(status="active", broker="admin")      # админ — дайыма толук доступ
         if u["status"] == "blocked":                          # ботту кайра ачты
             kw["status"] = u.get("prev_status") or "new"
         return self.db.upd(uid, **kw)
@@ -806,6 +808,10 @@ class App:
         src = start_arg[:32] if start_arg and not start_arg.startswith("bx_") else None
         u = self.ensure_user(m["from"], src)
         uid = u["id"]
+        fo = m.get("forward_origin") or {}
+        fch = (fo.get("chat") if fo.get("type") == "channel" else None) or m.get("forward_from_chat")
+        if fch and fch.get("type") == "channel" and self.is_admin(uid):
+            return self.ask_channel(uid, fch)
         if start_arg.startswith("ld_"):                    # сайтта WhatsApp калтырып, ботко келди
             self.link_lead(u, start_arg[3:40])
             u = self.db.user(uid)
@@ -1502,6 +1508,20 @@ class App:
         self.api("sendMessage", {"chat_id": uid, "text": text, "parse_mode": "HTML", "reply_markup": kb} if kb else
                  {"chat_id": uid, "text": text, "parse_mode": "HTML"}, chat=uid)
         return False
+
+    def ask_channel(self, uid, ch):
+        """Админ каналдан билдирүүнү пересылка кылды: бот андагы укугун текшерип, кайсы сигналдар экенин сурайт."""
+        cid, title = ch.get("id"), ch.get("title") or ""
+        me = int(str(self.tg.token).split(":")[0]) if self.tg.token else 0
+        mem = self.api("getChatMember", {"chat_id": cid, "user_id": me}) or {}
+        st = mem.get("status")
+        if st not in ("administrator", "creator"):
+            return self.send(uid, "⚠️ <b>%s</b>: бот бул каналда админ эмес (статус: %s). Каналдын админдерине @%s кошуп, «пригласительные ссылки» укугун бериңиз, анан кайра пересылка кылыңыз." % (
+                E(title), E(st or "жок"), E(self.username or "бот")))
+        rights = "✓ посттор" if mem.get("can_post_messages") else "✗ посттор"
+        rights += " · " + ("✓ шилтемелер/заявкалар" if mem.get("can_invite_users") else "✗ шилтемелер/заявкалар")
+        return self.send(uid, "📢 <b>%s</b> — бот админ (%s).\nБул канал кайсы сигналдар үчүн? / Для каких сигналов этот канал?" % (E(title), rights),
+                         ik([[("📈 BingX (фьючерс)", "chset:bingx:%s" % cid), ("⚡ BinoDex", "chset:binodex:%s" % cid)]]))
 
     def adm_channels(self, u):
         lines = []
