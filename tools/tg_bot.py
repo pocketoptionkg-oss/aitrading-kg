@@ -803,6 +803,38 @@ class App:
     def is_admin(self, uid):
         return uid in self.admins
 
+    def report_err(self, where, e=None, tb=None):
+        """Ката: бир түрү саатына бир жолу — ээсине кабар + сайттагы журналга (functions/api/errlog.js)."""
+        try:
+            msg = ("%s: %s" % (type(e).__name__, self.tg.redact(str(e))) if e is not None else "error")[:300]
+            sig = hashlib.sha1((where + "|" + msg[:80]).encode("utf-8")).hexdigest()[:10]
+            n = int(self.db.kv("errn:" + sig) or 0) + 1
+            self.db.kv_set("errn:" + sig, n)
+            if time.time() - int(self.db.kv("errt:" + sig) or 0) < 3600:
+                return
+            self.db.kv_set("errt:" + sig, int(time.time()))
+            if tb is None and e is not None and e.__traceback__ is not None:
+                tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
+            tb = self.tg.redact(tb or "")[-2500:]
+            if self.owner:
+                self.send(self.owner, "⚠️ <b>Ошибка бота</b> · %s\n<code>%s</code>\nПовторов: %d · отчёт передан на исправление." % (E(where), E(msg), n))
+            item = {"where": where, "msg": msg, "sig": sig, "n": n, "t": S.now_ms(), "tb": tb}
+            threading.Thread(target=self.push_err, args=(item,), daemon=True).start()
+        except Exception as e2:  # noqa: BLE001 — журнал ботту токтотпосун
+            print("! report_err: %s" % e2)
+
+    def push_err(self, item):
+        if not link_secret():
+            return
+        ts = str(S.now_ms())
+        body = json.dumps(item, ensure_ascii=False).encode("utf-8")
+        req = urllib.request.Request(S.SITE_URL + "/api/errlog", data=body, method="POST",
+                                     headers={"content-type": "application/json", "x-ts": ts, "x-sig": link_sig("err|" + ts, 22), "User-Agent": S.UA})
+        try:
+            urllib.request.urlopen(req, timeout=15).read()
+        except Exception as e:  # noqa: BLE001
+            print("! errlog push: %s" % e)
+
     def menu_btn(self, u, force=False):
         """Ар бир колдонуучунун «Меню» ордуна — Mini App баскычы. Токен 7 күн: 3 күндө бир же статус өзгөргөндө жаңыртылат."""
         uid = u["id"]
@@ -1643,6 +1675,7 @@ class App:
                 w = self.engine.next_wake()
             except Exception as e:  # noqa: BLE001
                 print("! сигнал сканери: %s" % self.tg.redact(e))
+                self.report_err("signals", e)
                 w = 30
             time.sleep(w)
 
@@ -1779,6 +1812,7 @@ class App:
                     desk.tick()
             except Exception as e:  # noqa: BLE001
                 print("! futures: %s" % self.tg.redact(e))
+                self.report_err("futures", e)
             time.sleep(60)
 
     def free_left(self, u):
@@ -1987,6 +2021,7 @@ class App:
                         print("  → ИИ-жардамчы: %d эскертме" % sent)
             except Exception as e:  # noqa: BLE001
                 print("! agent: %s" % self.tg.redact(e))
+                self.report_err("agent", e)
             time.sleep(900)
 
     def loop_leads(self):
@@ -1995,6 +2030,7 @@ class App:
                 self.pull_leads()
             except Exception as e:  # noqa: BLE001
                 print("! leads: %s" % self.tg.redact(e))
+                self.report_err("leads", e)
             time.sleep(45)
 
     def loop_maint(self):
@@ -2003,6 +2039,7 @@ class App:
                 self.maintenance()
             except Exception as e:  # noqa: BLE001
                 print("! maintenance: %s" % self.tg.redact(e))
+                self.report_err("maintenance", e)
             time.sleep(1800)
 
     def set_commands(self):
@@ -2036,6 +2073,7 @@ class App:
             threading.Thread(target=self.loop_agent, daemon=True).start()
         if FUT is not None and self.engine and os.environ.get("TG_FUTURES", "1") != "0":
             threading.Thread(target=self.loop_futures, daemon=True).start()
+        threading.excepthook = lambda a: self.report_err("thread:%s" % getattr(a.thread, "name", "?"), a.exc_value)
         offset = int(self.db.kv("offset") or 0)
         while True:
             try:
@@ -2053,8 +2091,9 @@ class App:
                 offset = upd["update_id"] + 1
                 try:
                     self.handle(upd)
-                except Exception:  # noqa: BLE001 — бир ката ботту токтотпойт
+                except Exception as e:  # noqa: BLE001 — бир ката ботту токтотпойт
                     print(self.tg.redact(traceback.format_exc()))
+                    self.report_err("handle", e)
             self.db.kv_set("offset", offset)
 
 
