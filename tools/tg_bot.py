@@ -690,11 +690,13 @@ class App:
                 print("! %s: %s" % (method, m))
             return None
 
-    def photo(self, chat, img, caption, kb=None):
+    def photo(self, chat, img, caption, kb=None, thread=None):
         """img: PNG байттары (биринчи жолу жүктөлөт) же Telegram file_id (кайра колдонуу). Кайтарат: file_id же None."""
         try:
             if isinstance(img, (bytes, bytearray)):
                 fields = {"chat_id": chat, "caption": caption, "parse_mode": "HTML"}
+                if thread:
+                    fields["message_thread_id"] = thread
                 if kb is not None:
                     fields["reply_markup"] = json.dumps(kb, ensure_ascii=False)
                 body, ct = _multipart(fields, {"photo": ("aitrading.png", bytes(img), "image/png")})
@@ -705,6 +707,8 @@ class App:
                 res = j.get("result") if j.get("ok") else None
             else:
                 pl = {"chat_id": chat, "photo": img, "caption": caption, "parse_mode": "HTML"}
+                if thread:
+                    pl["message_thread_id"] = thread
                 if kb is not None:
                     pl["reply_markup"] = kb
                 res = self.api("sendPhoto", pl, chat=chat)
@@ -733,8 +737,10 @@ class App:
                 return True
         return self.send(chat, caption, kb)
 
-    def send(self, chat, text, kb=None, preview=False):
+    def send(self, chat, text, kb=None, preview=False, thread=None):
         p = {"chat_id": chat, "text": text, "parse_mode": "HTML", "link_preview_options": {"is_disabled": not preview}}
+        if thread:
+            p["message_thread_id"] = thread
         if kb is not None:
             p["reply_markup"] = kb
         return self.api("sendMessage", p, chat=chat)
@@ -804,9 +810,13 @@ class App:
         gch = (m or {}).get("chat") or {}
         if gch.get("type") in ("group", "supergroup"):          # топ (группа): админ жазса — кайсы сигналдар экенин сурайт
             gid = (m.get("from") or {}).get("id")
-            if gid and self.is_admin(gid) and gch.get("id") not in (self.db.kv("ch:bingx"), self.db.kv("ch:binodex"))                     and not self.db.kv("gask:%s" % gch.get("id")):
-                self.db.kv_set("gask:%s" % gch.get("id"), 1)
-                return self.ask_channel(gid, gch)
+            th = m.get("message_thread_id") if m.get("is_topic_message") else None
+            here = (gch.get("id"), th)
+            linked = [(self.db.kv("ch:" + k), self.db.kv("th:" + k)) for k in ("bingx", "binodex")]
+            gk = "gask:%s:%s" % (gch.get("id"), th or 0)
+            if gid and self.is_admin(gid) and here not in linked and not self.db.kv(gk):
+                self.db.kv_set(gk, 1)
+                return self.ask_channel(gid, gch, th)
             return None
         if not m or m.get("chat", {}).get("type") != "private" or not m.get("from"):
             return None
@@ -1088,10 +1098,12 @@ class App:
                 return None
             return self.on_admin_cb(u, data, msg)
         if data.startswith("chset:") and self.is_admin(uid):
-            _, kind, cid = data.split(":", 2)
-            if kind in ("bingx", "binodex") and re.match(r"^-?\d+$", cid):
+            _, kind, rest = data.split(":", 2)
+            cid, _, th = rest.partition(":")
+            if kind in ("bingx", "binodex") and re.match(r"^-?\d+$", cid) and re.match(r"^\d*$", th):
                 self.db.kv_set("ch:" + kind, int(cid))
-                self.db.kv_set("gask:%s" % cid, None)
+                self.db.kv_set("th:" + kind, int(th) if th else None)
+                self.db.kv_set("gask:%s:%s" % (cid, th or 0), None)
                 return self.send(uid, "✅ Канал → %s ✓" % ("BingX (фьючерс)" if kind == "bingx" else "BinoDex"))
             return None
         if data == "chinv":
@@ -1405,14 +1417,14 @@ class App:
                         print("! card %s: %s" % (kind, e))
             return pics[lang]
 
-        def deliver(chat, lang, text):
+        def deliver(chat, lang, text, th=None):
             img = pic(lang)
             if img is not None and len(text) <= 1024:
-                fid = self.photo(chat, img, text)
+                fid = self.photo(chat, img, text, thread=th)
                 if fid:
                     pics[lang] = fid
                     return True
-            return self.send(chat, text)
+            return self.send(chat, text, thread=th)
 
         for u in users:
             lang = u.get("lang") or "kg"
@@ -1432,7 +1444,7 @@ class App:
         chan = self.db.kv("ch:" + sg.get("mkt", "")) or self.channel
         if chan:
             lang = os.environ.get("TG_CH_LANG", "ru")
-            if deliver(chan, lang, S.msg_signal(sg, lang) if kind == "signal" else S.msg_result(sg, hist, lang)):
+            if deliver(chan, lang, S.msg_signal(sg, lang) if kind == "signal" else S.msg_result(sg, hist, lang), self.db.kv("th:" + sg.get("mkt", ""))):
                 sent += 1
         print("  → %s: %d алуучу" % ("сигнал" if kind == "signal" else "жыйынтык", sent))
         return sent > 0
@@ -1500,11 +1512,12 @@ class App:
         cid = (rq.get("chat") or {}).get("id")
         fr = rq.get("from") or {}
         uid = fr.get("id")
-        kind = "bingx" if self.db.kv("ch:bingx") == cid else "binodex" if self.db.kv("ch:binodex") == cid else None
-        if not cid or not uid or not kind:
+        kinds = [k for k in ("bingx", "binodex") if self.db.kv("ch:" + k) == cid]
+        if not cid or not uid or not kinds:
             return None
         u = self.db.user(uid)
-        ok = bool(u) and (self.is_admin(uid) or (u["status"] == "active" and u.get("broker") == kind))
+        kind = (u or {}).get("broker") if (u or {}).get("broker") in kinds else kinds[0]
+        ok = bool(u) and (self.is_admin(uid) or (u["status"] == "active" and u.get("broker") in kinds))
         if ok:
             self.api("approveChatJoinRequest", {"chat_id": cid, "user_id": uid})
             return True
@@ -1517,7 +1530,7 @@ class App:
                  {"chat_id": uid, "text": text, "parse_mode": "HTML"}, chat=uid)
         return False
 
-    def ask_channel(self, uid, ch):
+    def ask_channel(self, uid, ch, thread=None):
         """Админ каналдан билдирүүнү пересылка кылды: бот андагы укугун текшерип, кайсы сигналдар экенин сурайт."""
         cid, title = ch.get("id"), ch.get("title") or ""
         me = int(str(self.tg.token).split(":")[0]) if self.tg.token else 0
@@ -1526,10 +1539,12 @@ class App:
         if st not in ("administrator", "creator"):
             return self.send(uid, "⚠️ <b>%s</b>: бот бул каналда админ эмес (статус: %s). Каналдын админдерине @%s кошуп, «пригласительные ссылки» укугун бериңиз, анан кайра пересылка кылыңыз." % (
                 E(title), E(st or "жок"), E(self.username or "бот")))
-        rights = "✓ посттор" if mem.get("can_post_messages") else "✗ посттор"
-        rights += " · " + ("✓ шилтемелер/заявкалар" if mem.get("can_invite_users") else "✗ шилтемелер/заявкалар")
-        return self.send(uid, "📢 <b>%s</b> — бот админ (%s).\nБул канал кайсы сигналдар үчүн? / Для каких сигналов этот канал?" % (E(title), rights),
-                         ik([[("📈 BingX (фьючерс)", "chset:bingx:%s" % cid), ("⚡ BinoDex", "chset:binodex:%s" % cid)]]))
+        rights = "✓ посты" if (mem.get("can_post_messages") or ch.get("type") != "channel") else "✗ посты"
+        rights += " · " + ("✓ ссылки/заявки" if mem.get("can_invite_users") else "✗ ссылки/заявки")
+        suf = (":%s" % thread) if thread else ""
+        where = (" (тема #%s)" % thread) if thread else ""
+        return self.send(uid, "📢 <b>%s</b>%s — бот админ (%s).\nДля каких сигналов этот канал/тема?" % (E(title), where, rights),
+                         ik([[("📈 BingX (фьючерс)", "chset:bingx:%s%s" % (cid, suf)), ("⚡ BinoDex", "chset:binodex:%s%s" % (cid, suf))]]))
 
     def adm_channels(self, u):
         lines = []
@@ -1538,9 +1553,14 @@ class App:
             if not cid:
                 lines.append("❌ %s: канал туташкан жок" % nm)
                 continue
-            r = self.api("sendMessage", {"chat_id": cid, "text": "✅ AITRADING.KG: бул канал — %s сигналдары үчүн. Тест билдирүү." % nm})
+            th = self.db.kv("th:" + kind)
+            pl = {"chat_id": cid, "text": "✅ AITRADING.KG: здесь будут сигналы %s. Тестовое сообщение." % nm}
+            if th:
+                pl["message_thread_id"] = th
+            r = self.api("sendMessage", pl)
             info = self.api("getChat", {"chat_id": cid}) or {}
-            lines.append(("✅ %s: <b>%s</b> — тест жөнөтүлдү" if r else "⚠️ %s: <b>%s</b> — жөнөтүлгөн жок (боттун укуктарын текшериңиз)") % (nm, E(info.get("title") or str(cid))))
+            nm2 = E(info.get("title") or str(cid)) + ((" · тема #%s" % th) if th else "")
+            lines.append(("✅ %s: <b>%s</b> — тест отправлен" if r else "⚠️ %s: <b>%s</b> — не отправлено (проверьте права бота)") % (nm, nm2))
         return self.send(u["id"], "📢 <b>Каналдар</b>\n" + "\n".join(lines))
 
     def channel_for(self, u):
@@ -1574,6 +1594,7 @@ class App:
         lang = os.environ.get("TG_CH_LANG", "ru")                # каналдар — орусча (автордун өтүнүчү)
         chan = self.db.kv("ch:bingx")
         targets = [chan] if chan else [a for a in self.admins]          # канал жок болсо — админге көрүү үчүн
+        th = self.db.kv("th:bingx") if chan else None
         for chat in targets:
             if kind == "signal":
                 text = FUT.msg_signal(tr, lang)
@@ -1582,14 +1603,14 @@ class App:
                     try:
                         img = CARDS.card_futures(tr, extra["cs"], lang, FUT.label(tr["sym"]))
                         if len(text) <= 1024:
-                            fid = self.photo(chat, img, text)
+                            fid = self.photo(chat, img, text, thread=th)
                             mid = fid and True
                     except Exception as e:  # noqa: BLE001
                         print("! fut card: %s" % e)
                 if not mid:
-                    self.send(chat, text)
+                    self.send(chat, text, thread=th)
             else:
-                self.send(chat, FUT.msg_update(tr, extra["kind"], extra["price"], extra.get("hist") or [], lang))
+                self.send(chat, FUT.msg_update(tr, extra["kind"], extra["price"], extra.get("hist") or [], lang), thread=th)
 
     def loop_futures(self):
         desk = FUT.Desk(lambda: self.db.kv("fut"), lambda st: self.db.kv_set("fut", st), self.fut_publish)
