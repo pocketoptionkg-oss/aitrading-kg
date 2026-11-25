@@ -58,6 +58,7 @@ POP = ["BTC", "ETH", "SOL", "XRP", "BNB", "DOGE", "TON", "ADA", "AVAX", "LINK", 
 
 ANTISPAM_ANY = 3 * 60000      # 3 мүнөттө 1 билдирмеден көп эмес
 ANTISPAM_SAME = 15 * 60000    # ошол эле сунуш — 15 мүнөттө 1 жолу
+SESSIONS = os.environ.get("TG_SESSIONS", "08:00-11:00,19:00-22:00")   # BinoDex соода сессиялары (Бишкек); бош — күнү-түнү
 
 T = {
     "kg": {
@@ -75,6 +76,12 @@ T = {
         "dg_head": "🔁 ПЕРЕКРЫТИЕ (догон) · 2-кирүү",
         "dg_note": "Мурунку сигнал минус болду. Ушул эле багытта экинчи кирүү — сумма 2 эседен ашпасын. Догон тобокелди көбөйтөт: жоготууга даяр болбосоңуз, кирбеңиз.",
         "dg_res": "перекрытие",
+        "ss_open": "СООДА СЕССИЯСЫ №{n} БАШТАЛДЫ", "ss_close": "СООДА СЕССИЯСЫНЫН ЖЫЙЫНТЫГЫ №{n}",
+        "ss_l1": "BinoDex сигналдары: {exp} мүн (негизги — 5 мүн)", "ss_l2": "Минустан кийин — бир перекрытие (догон) сигналы",
+        "ss_l3": "Сигнал боюнча гана кириңиз, сумма — депозиттин 1–2%",
+        "ss_none": "Бул сессияда сигнал болгон жок: рынок модельдин эрежесине туура келген жок.",
+        "ss_sum": "Плюс: {w} · Минус: {l} · Нөл: {t}", "ss_acc": "Сессиянын тактыгы: {pc}% ({n} сигнал)",
+        "ss_next": "Кийинки сессия: {t} (Бишкек)",
         "risk_bx": "18+ · Соода тобокелдиктүү · Киреше кепилденбейт",
         "min": "мүнөт", "h1": "1 саат",
         "win": "сигнал туура чыкты", "loss": "сигнал туура эмес чыкты", "tie": "баа өзгөргөн жок",
@@ -102,6 +109,12 @@ T = {
         "dg_head": "🔁 ПЕРЕКРЫТИЕ (догон) · вход №2",
         "dg_note": "Прошлый сигнал ушёл в минус. Второй вход в ту же сторону — сумма не больше 2× от первой. Догон увеличивает риск: не входите, если не готовы потерять эту сумму.",
         "dg_res": "перекрытие",
+        "ss_open": "ТОРГОВАЯ СЕССИЯ №{n} НАЧАЛАСЬ", "ss_close": "ИТОГ ТОРГОВОЙ СЕССИИ №{n}",
+        "ss_l1": "Сигналы BinoDex: {exp} мин (основные — 5 мин)", "ss_l2": "После минуса — один сигнал-перекрытие (догон)",
+        "ss_l3": "Входите только по сигналу, сумма — 1–2% депозита",
+        "ss_none": "В этой сессии сигналов не было: рынок не дал условий по правилам модели.",
+        "ss_sum": "Плюс: {w} · Минус: {l} · Ноль: {t}", "ss_acc": "Точность сессии: {pc}% ({n} сигналов)",
+        "ss_next": "Следующая сессия: {t} (Бишкек)",
         "risk_bx": "18+ · Торговля рискованна · Доход не гарантирован",
         "min": "мин", "h1": "1 час",
         "win": "сигнал сработал", "loss": "сигнал не сработал", "tie": "цена не изменилась",
@@ -635,6 +648,39 @@ def msg_result(sg, hist, lang):
     return "\n".join(lines)
 
 
+def session_stats(info, hist):
+    a, b = info["t0"], info["tEnd"]
+    xs = [x for x in hist if x.get("mkt") == "binodex" and a <= x.get("t0", 0) < b + 20 * 60000 and x.get("res") in (0, 1, 2)]
+    return xs, sum(1 for x in xs if x["res"] == 1), sum(1 for x in xs if x["res"] == 0), sum(1 for x in xs if x["res"] == 2)
+
+
+def msg_session(kind, info, hist, lang):
+    L, e = T[lang], html.escape
+    rng = "%s–%s (Бишкек)" % (hms(info["t0"], False), hms(info["tEnd"], False))
+    if kind == "session_open":
+        lines = ["🔔 <b>%s</b>" % e(L["ss_open"].format(n=info["n"])), LINE, "🕗 <b>%s</b>" % rng,
+                 "⚡ " + e(L["ss_l1"].format(exp=" / ".join(map(str, info.get("exp") or [5])))),
+                 "🔁 " + e(L["ss_l2"]), "📌 " + e(L["ss_l3"]), LINE,
+                 "⚠️ <i>%s %s</i>" % (e(L["honest"]), e(L["risk_fx"]))]
+        return "\n".join(lines)
+    xs, w, l, t = session_stats(info, hist)
+    lines = ["🏁 <b>%s</b>" % e(L["ss_close"].format(n=info["n"])), LINE, "🕗 %s · %s" % (datetime.fromtimestamp(info["t0"] / 1000, BISHKEK).strftime("%d.%m"), rng)]
+    if not xs:
+        lines.append("ℹ️ " + e(L["ss_none"]))
+    else:
+        lines.append("📊 <b>%s</b>" % e(L["ss_sum"].format(w=w, l=l, t=t)))
+        if w + l >= 5:
+            lines.append("🎯 " + e(L["ss_acc"].format(pc=jsround(w / (w + l) * 100), n=w + l)))
+        for x in xs[-12:]:
+            m = {1: "✅", 0: "❌", 2: "➖"}[x["res"]]
+            lines.append("%s %s %s · %d %s%s" % (m, e(x["name"]), "▲" if x["dir"] > 0 else "▼", x["exp"], e(L["min"]), " · 🔁" if x.get("dogon") else ""))
+    nx = next_session(info["tEnd"] + 1000)
+    if nx:
+        lines += [LINE, "⏭ " + e(L["ss_next"].format(t=hms(nx[1], False)))]
+    lines.append("<i>%s</i>" % e(L["honest"]))
+    return "\n".join(lines)
+
+
 def plain(text):
     return html.unescape(re.sub(r"</?b>", "", text))
 
@@ -707,7 +753,7 @@ def load_state(path):
 
 
 def save_state(path, st):
-    st["history"] = st["history"][-60:]
+    st["history"] = st["history"][-200:]
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(st, f, ensure_ascii=False, indent=1)
@@ -716,6 +762,37 @@ def save_state(path, st):
 
 def key_of(sg):
     return "%s:%d:%s" % (sg["base"], sg["dir"], sg["exp"] if sg["mkt"] == "binodex" else "1h")
+
+
+def sessions_today(ms):
+    """[(n, башы_ms, аягы_ms)] — Бишкек убактысы боюнча ошол күндүн сессиялары."""
+    day = datetime.fromtimestamp(ms / 1000, BISHKEK).replace(hour=0, minute=0, second=0, microsecond=0)
+    out = []
+    for n, part in enumerate([x for x in SESSIONS.split(",") if x.strip()], 1):
+        try:
+            a, b = [x.strip() for x in part.split("-")]
+            ta = day + timedelta(hours=int(a[:2]), minutes=int(a[3:5]))
+            tb = day + timedelta(hours=int(b[:2]), minutes=int(b[3:5]))
+            out.append((n, int(ta.timestamp() * 1000), int(tb.timestamp() * 1000)))
+        except (ValueError, IndexError):
+            continue
+    return out
+
+
+def session_at(ms):
+    if not SESSIONS.strip():
+        return (0, 0, 0)
+    for x in sessions_today(ms):
+        if x[1] <= ms < x[2]:
+            return x
+    return None
+
+
+def next_session(ms):
+    for x in sessions_today(ms) + sessions_today(ms + 86400000):
+        if x[1] > ms:
+            return x
+    return None
 
 
 def scan_every(mkt, exp):
@@ -819,9 +896,32 @@ class Bot:
             self.st["pending"].append(sg)
             self.st["last"] = {"key": key_of(sg), "t": now_ms()}
 
+    def session_tick(self):
+        if not SESSIONS.strip():
+            return
+        now = now_ms()
+        ss = self.st.setdefault("sess", {})
+        for n, a, b in sessions_today(now) + sessions_today(now - 86400000):
+            sid = "%s#%d" % (datetime.fromtimestamp(a / 1000, BISHKEK).strftime("%Y-%m-%d"), n)
+            info = {"id": sid, "n": n, "t0": a, "tEnd": b, "mkt": "binodex", "exp": sorted(self.args.exp, reverse=True)}
+            ph = ss.get(sid)
+            if a <= now < b and not ph:
+                ss[sid] = "open"
+                if now - a < 30 * 60000:                  # бот кеч иштеп калса — «башталды» жазылбайт
+                    self.publish("session_open", info)
+            elif now >= b and ph == "open":
+                late = [x for x in self.st["pending"] if x["mkt"] == "binodex" and x["t0"] < b + 20 * 60000]
+                if late and now < b + 30 * 60000:
+                    continue                              # акыркы сигналдардын жыйынтыгын күтөт
+                ss[sid] = "closed"
+                self.publish("session_close", info)
+        for k in [k for k in ss if k < datetime.fromtimestamp((now - 3 * 86400000) / 1000, BISHKEK).strftime("%Y-%m-%d")]:
+            ss.pop(k, None)
+        save_state(self.state_path, self.st)
+
     def streams(self):
         out = []
-        if "binodex" in self.args.markets:
+        if "binodex" in self.args.markets and session_at(now_ms()):
             out += [("binodex", e) for e in self.args.exp]
         if "bingx" in self.args.markets:
             out.append(("bingx", 60))
@@ -829,6 +929,7 @@ class Bot:
 
     def run_once(self):
         self.resolve_due()
+        self.session_tick()
         if self.bx is None or now_ms() - self.bx.get("_t", 0) > 3600000:
             self.bx = load_bx()
             self.bx["_t"] = now_ms()
@@ -912,6 +1013,9 @@ class Bot:
         for mkt, exp in self.streams():
             waits.append(self.st["scan_t"].get("%s:%s" % (mkt, exp), 0) + scan_every(mkt, exp) - now)
         waits += [p["tEnd"] + 2000 - now for p in self.st["pending"]]
+        if SESSIONS.strip():
+            cur, nx = session_at(now), next_session(now)
+            waits += [x for x in ((cur[2] - now + 1000) if cur else None, (nx[1] - now + 1000) if nx else None) if x is not None]
         return max(3.0, min(waits) / 1000) if waits else 60.0
 
 

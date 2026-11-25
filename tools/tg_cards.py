@@ -407,6 +407,37 @@ def card_free_end(lang="kg", m=2):
     return _list_card(L["free_t"] + " (%d/%d)" % (m, m), L["free_s"], L["free_l"], C["yellow"], lang, True)
 
 
+def card_session_open(title, sub, items, lang="kg"):
+    """Соода сессиясы башталды (тексттер чакыруучудан — tg_signals.T)."""
+    return _list_card(title, sub, items, C["yellow"], lang, False)
+
+
+def card_session_close(title, sub, w, l, t, rows, lang="kg", labels=("ПЛЮС", "МИНУС", "НОЛЬ"), empty=None):
+    """Сессиянын жыйынтыгы: үч чоң сан + акыркы сигналдар (rows: [(res, текст)])."""
+    img = background(C["mint"] if w >= l else C["blue"])
+    d = ImageDraw.Draw(img)
+    brand(d, lang)
+    x, r = 72, W - 72
+    d.text(S(x, 128), title, font=fit(d, title, 54, r - x), fill=C["yellow"])
+    d.text(S(x, 204), sub, font=font(26), fill=C["muted"])
+    bw, gap, y = 250, 24, 260
+    for i, (lab, v, col) in enumerate(((labels[0], w, C["mint"]), (labels[1], l, C["red"]), (labels[2], t, C["grey"]))):
+        bx = x + i * (bw + gap)
+        d.rounded_rectangle(S(bx, y, bx + bw, y + 150), radius=22 * K, fill=mix(C["bg"], col, 0.12), outline=col, width=3 * K)
+        d.text(S(bx + bw / 2, y + 62), str(v), font=font(72, True), fill=col, anchor="mm")
+        d.text(S(bx + bw / 2, y + 124), lab, font=font(22, True), fill=C["text"], anchor="mm")
+    lx = x + 3 * (bw + gap) + 10
+    if not rows and empty:
+        d.text(S(lx, y + 10), empty, font=fit(d, empty, 22, r - lx, False, 14), fill=C["muted"])
+    for j, (res, txt) in enumerate(rows[-8:]):
+        yy = y - 6 + j * 40
+        col = {1: C["mint"], 0: C["red"]}.get(res, C["grey"])
+        d.ellipse(S(lx, yy + 8, lx + 18, yy + 26), fill=col)
+        d.text(S(lx + 30, yy + 17), txt, font=fit(d, txt, 22, r - lx - 30, False, 14), fill=C["text"], anchor="lm")
+    footer(d, lang)
+    return png(img)
+
+
 # ---------------------------------------------------------------- үлгүлөр
 def _demo(out):
     import random

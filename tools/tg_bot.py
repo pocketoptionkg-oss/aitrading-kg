@@ -1395,7 +1395,54 @@ class App:
     # ======================================================================
     #  Сигналдар → ачык доступтагыларга
     # ======================================================================
+    def session_card(self, kind, info, hist, lang):
+        if CARDS is None:
+            return None
+        L = S.T[lang]
+        rng = "%s–%s (%s)" % (S.hms(info["t0"], False), S.hms(info["tEnd"], False), "Бишкек")
+        try:
+            if kind == "session_open":
+                return CARDS.card_session_open(L["ss_open"].format(n=info["n"]), rng,
+                                               [L["ss_l1"].format(exp=" / ".join(map(str, info.get("exp") or [5]))), L["ss_l2"], L["ss_l3"]], lang)
+            xs, w, l, t = S.session_stats(info, hist)
+            rows = [(x["res"], "%s %s · %d %s%s" % (x["name"], "▲" if x["dir"] > 0 else "▼", x["exp"], L["min"], " · догон" if x.get("dogon") else "")) for x in xs]
+            return CARDS.card_session_close(L["ss_close"].format(n=info["n"]), rng, w, l, t, rows, lang,
+                                            (L["r_win"], L["r_loss"], L["r_tie"]), L["ss_none"])
+        except Exception as e:  # noqa: BLE001
+            print("! session card: %s" % e)
+            return None
+
+    def publish_session(self, kind, info, hist):
+        """Сессия: BinoDex каналы/темасы бар болсо — ошого; жок болсо — активдүү BinoDex колдонуучуларына (админ да)."""
+        if self.db.kv("signals_paused"):
+            return False
+        chan = self.db.kv("ch:binodex") or self.channel
+        targets = []
+        if chan:
+            targets.append((chan, os.environ.get("TG_CH_LANG", "ru"), self.db.kv("th:binodex") if self.db.kv("ch:binodex") else None))
+        else:
+            for u in self.db.q("SELECT * FROM users WHERE signals=1 AND status='active' AND broker IN ('binodex','admin')"):
+                targets.append((u["id"], u.get("lang") or "kg", None))
+        pics, sent = {}, 0
+        for chat, lang, th in targets:
+            text = S.msg_session(kind, info, hist, lang)
+            if lang not in pics:
+                pics[lang] = self.session_card(kind, info, hist, lang)
+            ok = None
+            if pics[lang] is not None and len(text) <= 1024:
+                fid = self.photo(chat, pics[lang], text, thread=th)
+                if fid:
+                    pics[lang], ok = fid, True
+            if not ok:
+                ok = self.send(chat, text, thread=th)
+            sent += 1 if ok else 0
+            time.sleep(0.04)
+        print("  → %s: %d алуучу" % (kind, sent))
+        return sent > 0
+
     def publish(self, kind, sg, hist):
+        if kind in ("session_open", "session_close"):
+            return self.publish_session(kind, sg, hist)
         if kind == "signal":
             if self.db.kv("signals_paused"):
                 return False
