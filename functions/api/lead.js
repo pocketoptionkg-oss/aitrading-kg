@@ -4,6 +4,7 @@
    Telegram-бот (tools/tg_bot.py) /api/leads аркылуу жаңы заявкаларды алып, админге жиберет.
    Почта жана сырсөз суралбайт. */
 import { json, sameOrigin } from "../../server/sign.js";
+import { idxAdd } from "../../server/kvidx.js";
 
 const TTL = 120 * 86400;
 const PER_HOUR = 6;   // бир IP'ден саатына
@@ -52,5 +53,6 @@ export async function onRequest(context) {
     country: (request.cf && request.cf.country) || ""
   };
   await env.LEADS_KV.put("lead:" + id, JSON.stringify(lead), { expirationTtl: TTL });
+  await idxAdd(env.LEADS_KV, "lead", id);
   return json({ ok: true, id });
 }

@@ -2,6 +2,7 @@
    GET /api/leads?after=<акыркы id>   башы: X-Ts (ms), X-Sig = HMAC(LINK_SECRET, "leads|" + X-Ts)[0:22]
    Колу 5 мүнөт жарактуу. Жооп: { items: [lead…] } — id боюнча иреттелген, 50гө чейин. */
 import { json, sign, same } from "../../server/sign.js";
+import { idxAfter } from "../../server/kvidx.js";
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -13,19 +14,8 @@ export async function onRequest(context) {
   if (!same(sig, (await sign(env.LINK_SECRET, "leads|" + ts)).slice(0, 22))) return json({ error: "forbidden" }, 403);
 
   const after = new URL(request.url).searchParams.get("after") || "";
-  const out = [];
-  let cursor;
-  do {
-    const page = await env.LEADS_KV.list({ prefix: "lead:", cursor, limit: 1000 });
-    for (const k of page.keys) {
-      const id = k.name.slice(5);
-      if (id > after) out.push(id);
-    }
-    cursor = page.list_complete ? null : page.cursor;
-  } while (cursor && out.length < 200);
-  out.sort();
   const items = [];
-  for (const id of out.slice(0, 50)) {
+  for (const id of await idxAfter(env.LEADS_KV, "lead", after, 50)) {   // list() эмес — суткалык чек бүтпөйт
     const v = await env.LEADS_KV.get("lead:" + id);
     if (v) { try { items.push(JSON.parse(v)); } catch (e) { /* бузук жазуу */ } }
   }
