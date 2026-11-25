@@ -801,6 +801,13 @@ class App:
                 self.db.upd(u["id"], prev_status=u["status"], status="blocked")
             return None
         m = upd.get("message")
+        gch = (m or {}).get("chat") or {}
+        if gch.get("type") in ("group", "supergroup"):          # топ (группа): админ жазса — кайсы сигналдар экенин сурайт
+            gid = (m.get("from") or {}).get("id")
+            if gid and self.is_admin(gid) and gch.get("id") not in (self.db.kv("ch:bingx"), self.db.kv("ch:binodex"))                     and not self.db.kv("gask:%s" % gch.get("id")):
+                self.db.kv_set("gask:%s" % gch.get("id"), 1)
+                return self.ask_channel(gid, gch)
+            return None
         if not m or m.get("chat", {}).get("type") != "private" or not m.get("from"):
             return None
         text = (m.get("text") or "").strip()
@@ -1084,6 +1091,7 @@ class App:
             _, kind, cid = data.split(":", 2)
             if kind in ("bingx", "binodex") and re.match(r"^-?\d+$", cid):
                 self.db.kv_set("ch:" + kind, int(cid))
+                self.db.kv_set("gask:%s" % cid, None)
                 return self.send(uid, "✅ Канал → %s ✓" % ("BingX (фьючерс)" if kind == "bingx" else "BinoDex"))
             return None
         if data == "chinv":
