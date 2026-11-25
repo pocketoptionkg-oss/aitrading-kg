@@ -693,7 +693,8 @@ class App:
         self.engine = None
         if signals:
             a = argparse.Namespace(dry_run=False, lang=os.environ.get("TG_LANG", "kg"), state=os.path.join(HERE, "tg_state.json"),
-                                   exp=self.exp, markets={"binodex", "bingx"}, force=False, verbose=False)
+                                   exp=self.exp, markets={"binodex"} | ({"bingx"} if os.environ.get("TG_SPOT_BINGX") == "1" else set()),
+                                   force=False, verbose=False)   # BingX — фьючерс гана (tg_futures); спот: TG_SPOT_BINGX=1
             self.engine = Engine(a, self)
         self.username = None
 
@@ -1904,7 +1905,7 @@ class App:
         self.api("deleteWebhook", {"drop_pending_updates": False})
         self.set_commands()
         print("AITRADING.KG бот: @%s · админдер: %d · BingX API: %s · BinoDex: %s · сигналдар: %s · база: %s" % (
-            self.username, len(self.admins), "✓" if self.bingx.ok() else "жок", binodex_status(), "✓ BinoDex %s мүн + BingX" % ",".join(map(str, self.exp)) if self.engine else "өчүк", DB_PATH))
+            self.username, len(self.admins), "✓" if self.bingx.ok() else "жок", binodex_status(), "✓ BinoDex %s мүн + BingX фьючерс" % ",".join(map(str, self.exp)) if self.engine else "өчүк", DB_PATH))
         if not self.admins:
             print("! Админ жок: TELEGRAM_CHAT_ID же TELEGRAM_ADMIN_IDS'ке өзүңүздүн Telegram ID'ңизди коюңуз (Телеграм_бот_туташтыруу.bat).")
         if S.keep_awake(True):
