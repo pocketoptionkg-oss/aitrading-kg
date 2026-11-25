@@ -1178,7 +1178,7 @@ class App:
             "✓" if self.bingx.ok() else "ачкыч жок (кол менен)", binodex_status(), "⏸ токтотулган" if paused else ("▶️ иштеп жатат" if self.engine else "өчүк (--no-signals)"))
         kb = ik([[("📣 Рассылка", "adm:bc"), ("🧾 Заявкалар (%d)" % pend, "adm:queue")],
                  [("👥 Трейдерлер", "adm:users"), ("📊 Статистика", "adm:stats")],
-                 [("▶️ Сигналдарды улантуу" if paused else "⏸ Сигналдарды токтотуу", "adm:sig")]] + ([[("📒 Блокнот заявок", "nb:p:0"), ("👥 Клиенты бота", "nb:c:in:0")]] if u["id"] == self.owner else []))
+                 [("▶️ Сигналдарды улантуу" if paused else "⏸ Сигналдарды токтотуу", "adm:sig")]] + ([[("📒 Блокнот заявок", "nb:p:0"), ("👥 Клиенты бота", "nb:c:in:0")], [("📥 Скачать PDF (заявки + клиенты)", "nb:pdf")]] if u["id"] == self.owner else []))
         if mid:
             return self.edit(u["id"], mid, text, kb)
         return self.send(u["id"], text, kb)
@@ -1711,6 +1711,8 @@ class App:
         parts = data.split(":")
         if parts[1] == "c":
             return self.clients(uid, parts, msg)
+        if parts[1] == "pdf":
+            return self.export_pdf(uid)
         if parts[1] == "v" and len(parts) > 2:
             ld = self.db.one("SELECT * FROM leads WHERE id=?", (re.sub(r"[^0-9a-z-]", "", parts[2])[:20],))
             if not ld:
@@ -1742,12 +1744,35 @@ class App:
             nav.append(("➡️", "nb:p:%d" % (page + 1)))
         if nav:
             rows_kb.append(nav)
-        rows_kb.append([("👥 Клиенты бота", "nb:c:in:0")])
+        rows_kb.append([("👥 Клиенты бота", "nb:c:in:0"), ("📥 PDF", "nb:pdf")])
         if not rows:
             lines.append("Пока пусто.")
         mid = msg.get("message_id") if parts[1] == "p" and msg.get("text", "").startswith("📒") else None
         text = "\n".join(lines)
         return self.edit(uid, mid, text, ik(rows_kb)) if mid else self.send(uid, text, ik(rows_kb) if rows_kb else None)
+
+    def export_pdf(self, uid):
+        """Бардык заявкалар жана колдонуучулар — PDF файл, ээсинин жеке чатына гана."""
+        try:
+            import tg_export
+            leads = self.db.q("SELECT l.*, u.username FROM leads l LEFT JOIN users u ON u.id=l.tg_id ORDER BY l.t DESC")
+            users = self.db.q("SELECT * FROM users WHERE broker IS NOT 'admin' ORDER BY created DESC")
+            st = {k: re.sub(r"^[^0-9A-Za-zА-Яа-яЁё]+", "", v) for k, v in TX["ru"]["st"].items()}
+            pdf = tg_export.build(leads, users, st)
+        except Exception as e:  # noqa: BLE001
+            print("! pdf: %s" % e)
+            return self.send(uid, "⚠️ PDF не получилось: %s" % E(str(e)[:120]))
+        name = "aitrading_klienty_%s.pdf" % S.datetime.now(S.BISHKEK).strftime("%Y-%m-%d_%H%M")
+        cap = "📥 Заявки: %d · клиенты бота: %d\n🔒 Конфиденциально — не пересылайте." % (len(leads), len(users))
+        try:
+            body, ct = _multipart({"chat_id": uid, "caption": cap}, {"document": (name, pdf, "application/pdf")})
+            req = urllib.request.Request("https://api.telegram.org/bot%s/sendDocument" % self.tg.token, data=body,
+                                         headers={"Content-Type": ct, "User-Agent": S.UA})
+            with urllib.request.urlopen(req, timeout=60) as r:
+                return json.loads(r.read().decode("utf-8")).get("ok")
+        except Exception as e:  # noqa: BLE001
+            print("! sendDocument: %s" % self.tg.redact(e))
+            return self.send(uid, "⚠️ Не удалось отправить PDF.")
 
     def clients(self, uid, parts, msg):
         """parts: nb:c:<in|all>:<page>. in — каттоосу/толуктоосу бүтө электер (кол менен жазуу үчүн)."""
