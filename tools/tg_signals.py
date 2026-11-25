@@ -72,6 +72,9 @@ T = {
         "quote_bx": "маалымат: {p}, 1 саат шамдар",
         "honest": "Ыктымалдык — кепилдик эмес.",
         "risk_fx": "18+ · Кыска мөөнөттүү соода — эң тобокелдүү. Адегенде демо-эсепте текшериңиз.",
+        "dg_head": "🔁 ПЕРЕКРЫТИЕ (догон) · 2-кирүү",
+        "dg_note": "Мурунку сигнал минус болду. Ушул эле багытта экинчи кирүү — сумма 2 эседен ашпасын. Догон тобокелди көбөйтөт: жоготууга даяр болбосоңуз, кирбеңиз.",
+        "dg_res": "перекрытие",
         "risk_bx": "18+ · Соода тобокелдиктүү · Киреше кепилденбейт",
         "min": "мүнөт", "h1": "1 саат",
         "win": "сигнал туура чыкты", "loss": "сигнал туура эмес чыкты", "tie": "баа өзгөргөн жок",
@@ -96,6 +99,9 @@ T = {
         "quote_bx": "данные: {p}, свечи 1 час",
         "honest": "Это вероятность, а не гарантия.",
         "risk_fx": "18+ · Краткосрочная торговля — самая рискованная. Сначала проверьте на демо-счёте.",
+        "dg_head": "🔁 ПЕРЕКРЫТИЕ (догон) · вход №2",
+        "dg_note": "Прошлый сигнал ушёл в минус. Второй вход в ту же сторону — сумма не больше 2× от первой. Догон увеличивает риск: не входите, если не готовы потерять эту сумму.",
+        "dg_res": "перекрытие",
         "risk_bx": "18+ · Торговля рискованна · Доход не гарантирован",
         "min": "мин", "h1": "1 час",
         "win": "сигнал сработал", "loss": "сигнал не сработал", "tie": "цена не изменилась",
@@ -578,6 +584,9 @@ def msg_signal(sg, lang):
     lines = ["🚀 <b>%s</b>" % e(L["sig_h_fx"].format(m=sg["exp"]) if fx else L["sig_h_bx"]), LINE,
              "💎 <b>%s</b>" % e(sg["name"]),
              "%s %s: <b>%s</b> · %s <b>%s</b>" % ("📈" if up else "📉", e(L["dir_w"]), dir_txt(sg, L), e(L["prob_w"]), dp)]
+    if sg.get("dogon"):
+        lines[0:0] = ["<b>%s</b>" % e(L["dg_head"])]
+        lines.insert(5, "❗️ <i>%s</i>" % e(L["dg_note"]))
     if fx:
         lines += ["🎯 %s: <b>%s</b>" % (e(L["entry"]), money(sg["entry"], True)),
                   "⏱ %s: <b>%s → %s</b> (Бишкек)" % (e(L["time_w"]), hms(sg["t0"]), hms(sg["tEnd"])),
@@ -611,7 +620,7 @@ def msg_result(sg, hist, lang):
     what = {1: L["win"], 0: L["loss"], 2: L["tie"], 3: L["nodata"]}[res]
     dur = ("%d %s" % (sg["exp"], L["min"])) if fx else L["h1"]
     arrow = "▲" if sg["dir"] > 0 else "▼"
-    lines = ["%s <b>%s</b> · <b>%s</b>" % (mark, e(head), e(sg["name"])), LINE]
+    lines = ["%s <b>%s</b> · <b>%s</b>%s" % (mark, e(head), e(sg["name"]), (" · 🔁 " + e(L["dg_res"])) if sg.get("dogon") else ""), LINE]
     if res != 3 and sg.get("exit") and sg.get("entry"):
         ch = (sg["exit"] - sg["entry"]) / sg["entry"] * 100
         lines.append("%s %s → <b>%s</b> (%s) · ⏱ %s" % (arrow, money(sg["entry"], fx), money(sg["exit"], fx),
@@ -783,9 +792,32 @@ class Bot:
                     self.st["pending"] = [x for x in self.st["pending"] if x["id"] != sg["id"]]
                     self.st["history"].append(sg)
                     self.publish("result", sg)
+                    if sg["mkt"] == "binodex" and sg["res"] == 0 and not sg.get("dogon") and os.environ.get("TG_DOGON", "1") != "0":
+                        self.dogon(sg)
             save_state(self.state_path, self.st)
         finally:
             self.resolving = False
+
+    def dogon(self, prev):
+        """Минустан кийин бир гана жолу: ошол эле актив, ошол эле багыт, жаңы баа (мартингейл 1 кадам, эскертүү менен)."""
+        sg = {k: v for k, v in prev.items() if k not in ("res", "exit", "tRes")}
+        try:
+            d = live_fx(sg["code"], sg["exp"], {})
+            sg["entry"], sg["t"], sg["provider"] = d["entry"], d["t"], d["provider"]
+            sg["_cs"] = [{"time": c["time"], "open": c["open"], "high": c["high"], "low": c["low"], "close": c["close"]} for c in d["candles"][-64:]]
+        except Exception as e:  # noqa: BLE001 — жаңы баа жок болсо догон жок
+            print("! догон %s: баа жок (%s)" % (sg["name"], str(e)[:60]))
+            return
+        sg["dogon"] = 1
+        sg["id"] = now_ms()
+        sg["t0"] = sg["t"]
+        sg["tEnd"] = sg["t0"] + sg["exp"] * 60000
+        sg["res"], sg["exit"] = None, None
+        ok = self.publish("signal", sg)
+        sg.pop("_cs", None)
+        if ok:
+            self.st["pending"].append(sg)
+            self.st["last"] = {"key": key_of(sg), "t": now_ms()}
 
     def streams(self):
         out = []
@@ -843,7 +875,7 @@ class Bot:
         if not tops:
             return
         L, now = self.st["last"], now_ms()
-        for c in sorted(tops, key=lambda x: (-abs(x["p"] - 0.5), -x["edge"])):
+        for c in sorted(tops, key=lambda x: (x["mkt"] == "binodex" and x.get("exp") != 5, -abs(x["p"] - 0.5), -x["edge"])):
             k = key_of(c)
             if k == L.get("key") and now - L.get("t", 0) < ANTISPAM_SAME:
                 print("  антиспам: %s — ошол эле сигнал 15 мүнөт ичинде, кайталанбайт." % c["name"])
@@ -1149,7 +1181,7 @@ def main():
     ap.add_argument("--dry-run", action="store_true", help="эч нерсе жөнөтпөйт, билдирүүлөрдү экранга чыгарат")
     ap.add_argument("--loop", action="store_true", help="токтобой иштөө (ПК / сервер)")
     ap.add_argument("--force", action="store_true", help="скан графигине карабай азыр сканерлөө")
-    ap.add_argument("--exp", default=os.environ.get("TG_EXP", "1"), help="BinoDex экспирациялары, мүнөт: 1,3,5,15 (демейки 1)")
+    ap.add_argument("--exp", default=os.environ.get("TG_EXP", "5,3,2"), help="BinoDex экспирациялары, мүнөт: 5,3,2 (демейки; 5 — негизги)")
     ap.add_argument("--markets", default=os.environ.get("TG_MARKETS", "binodex,bingx"), help="binodex,bingx")
     ap.add_argument("--lang", default=os.environ.get("TG_LANG", "kg"), choices=["kg", "ru"])
     ap.add_argument("--state", default=os.environ.get("TG_STATE", ""), help="абал файлы (демейки tools/tg_state.json)")
