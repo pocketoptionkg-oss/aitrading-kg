@@ -32,6 +32,10 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import tg_signals as S  # noqa: E402
+try:                                                  # ИИ-жардамчы (дожим + жооптор)
+    import tg_agent as AG  # noqa: E402
+except Exception:  # noqa: BLE001
+    AG = None
 try:                                                  # сүрөттөр (Pillow + DejaVu шрифти); жок болсо — текст гана
     import tg_cards as CARDS  # noqa: E402
     if not CARDS.available():
@@ -920,7 +924,30 @@ class App:
         if b in ("bingx", "binodex") and u.get("status") != "active" and re.match(r"^\s*\d{5,15}\s*$", text or ""):
             u = self.db.upd(uid, step="id:" + b)             # «Отправить ID» баспай эле ID жазды
             return self.on_step(u, m, text)
+        if AG is not None and text and not text.startswith("/") and AG.ai_on():
+            r = self.ai_answer(u, text)
+            if r:
+                return r
         return self.send(uid, T(u, "menu_hint"), self.menu_kb(u))
+
+    def ai_answer(self, u, text):
+        uid = u["id"]
+        dk = "ai:%d:%s" % (uid, S.datetime.now(S.BISHKEK).strftime("%Y%m%d"))
+        n = int(self.db.kv(dk) or 0)
+        if n >= AG.AI_DAILY:
+            return None
+        hk = "aih:%d" % uid
+        try:
+            hist = json.loads(self.db.kv(hk) or "[]")
+        except ValueError:
+            hist = []
+        self.api("sendChatAction", {"chat_id": uid, "action": "typing"})
+        r = AG.reply(u, text, self.free_left(u), hist)
+        if not r:
+            return None
+        self.db.kv_set(dk, n + 1)
+        self.db.kv_set(hk, json.dumps((hist + [{"role": "user", "content": text[:800]}, {"role": "assistant", "content": r[:1500]}])[-8:], ensure_ascii=False))
+        return self.api("sendMessage", {"chat_id": uid, "text": r[:4000], "reply_markup": self.menu_kb(u)}, chat=uid)
 
     def open(self, u, act, mid=None):
         uid = u["id"]
@@ -1203,6 +1230,15 @@ class App:
             if u.get("verified_at"):                          # мурда админ ырастаган — кайра кирүү жетиштүү
                 return self.activate(u, "кайра кирди")
             return self.verify(u)
+        if data == "fu:off":
+            k = "fu:%d" % uid
+            try:
+                st = json.loads(self.db.kv(k) or "{}")
+            except ValueError:
+                st = {}
+            st["off"] = 1
+            self.db.kv_set(k, json.dumps(st))
+            return self.send(uid, "🔕 Хорошо, напоминаний больше не будет." if u.get("lang") == "ru" else "🔕 Макул, мындан ары эскертпейм.")
         if data == "skipproof":
             if u.get("step") != "proof":
                 return None
@@ -1904,6 +1940,55 @@ class App:
             time.sleep(0.05)
         return len(items)
 
+    def agent_kb(self, u, stg):
+        uid, ru = u["id"], u.get("lang") == "ru"
+        rows = []
+        if stg in ("register", "rereg"):
+            rows.append([(T(u, "btn_ref", b="BinoDex"), self.refs.get("binodex")), (T(u, "btn_ref", b="BingX"), self.refs.get("bingx"))])
+            rows.append([("📝 Регистрация" if ru else "📝 Катталуу", "menu:register")])
+        elif stg == "try_free":
+            rows.append([("⭐ Сигналы" if ru else "⭐ Сигналдар", "menu:signals")])
+        elif stg == "deposit":
+            if u.get("broker") == "binodex" and oauth_ready():
+                rows.append([(T(u, "btn_oauth"), oauth_url(uid))])
+            rows.append([("👤 Профиль", "menu:profile")])
+        elif stg == "comeback":
+            rows.append([("👤 Профиль", "menu:profile")])
+        rows.append([("🔕 Не напоминать" if ru else "🔕 Эскертпе", "fu:off")])
+        return ik(rows)
+
+    def loop_agent(self):
+        """2 күндө 1 жолу: катталуу/толуктоо бүтө электерге жеке эскертме (10:00–20:00 Бишкек)."""
+        time.sleep(90)
+        while True:
+            try:
+                if not self.db.kv("agent_paused"):
+                    sent, now = 0, S.now_ms()
+                    for u in self.db.q("SELECT * FROM users WHERE status NOT IN ('active','blocked','pending') AND broker IS NOT 'admin' ORDER BY last_seen DESC"):
+                        if sent >= 25 or self.is_admin(u["id"]):
+                            continue
+                        stg = AG.stage(u, self.free_left(u))
+                        if not stg or now - (u.get("last_seen") or 0) < 86400000:
+                            continue                      # акыркы суткада өзү кирген — тынчсыздандырбайбыз
+                        k = "fu:%d" % u["id"]
+                        try:
+                            st = json.loads(self.db.kv(k) or "{}")
+                        except ValueError:
+                            st = {}
+                        if not AG.due(st):
+                            continue
+                        text = AG.followup_text(u, stg, self.free_left(u))
+                        ok = self.api("sendMessage", {"chat_id": u["id"], "text": text[:4000], "reply_markup": self.agent_kb(u, stg)}, chat=u["id"])
+                        st.update(n=st.get("n", 0) + 1, t=int(time.time()), last=stg)
+                        self.db.kv_set(k, json.dumps(st))
+                        sent += 1 if ok else 0
+                        time.sleep(0.5)
+                    if sent:
+                        print("  → ИИ-жардамчы: %d эскертме" % sent)
+            except Exception as e:  # noqa: BLE001
+                print("! agent: %s" % self.tg.redact(e))
+            time.sleep(900)
+
     def loop_leads(self):
         while True:
             try:
@@ -1947,6 +2032,8 @@ class App:
             threading.Thread(target=self.loop_signals, daemon=True).start()
         threading.Thread(target=self.loop_maint, daemon=True).start()
         threading.Thread(target=self.loop_leads, daemon=True).start()
+        if AG is not None and os.environ.get("TG_AGENT", "1") != "0":
+            threading.Thread(target=self.loop_agent, daemon=True).start()
         if FUT is not None and self.engine and os.environ.get("TG_FUTURES", "1") != "0":
             threading.Thread(target=self.loop_futures, daemon=True).start()
         offset = int(self.db.kv("offset") or 0)
