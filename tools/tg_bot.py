@@ -1178,7 +1178,7 @@ class App:
             "✓" if self.bingx.ok() else "ачкыч жок (кол менен)", binodex_status(), "⏸ токтотулган" if paused else ("▶️ иштеп жатат" if self.engine else "өчүк (--no-signals)"))
         kb = ik([[("📣 Рассылка", "adm:bc"), ("🧾 Заявкалар (%d)" % pend, "adm:queue")],
                  [("👥 Трейдерлер", "adm:users"), ("📊 Статистика", "adm:stats")],
-                 [("▶️ Сигналдарды улантуу" if paused else "⏸ Сигналдарды токтотуу", "adm:sig")]] + ([[("📒 Блокнот заявок", "nb:p:0")]] if u["id"] == self.owner else []))
+                 [("▶️ Сигналдарды улантуу" if paused else "⏸ Сигналдарды токтотуу", "adm:sig")]] + ([[("📒 Блокнот заявок", "nb:p:0"), ("👥 Клиенты бота", "nb:c:in:0")]] if u["id"] == self.owner else []))
         if mid:
             return self.edit(u["id"], mid, text, kb)
         return self.send(u["id"], text, kb)
@@ -1709,6 +1709,8 @@ class App:
         if uid != self.owner:
             return None
         parts = data.split(":")
+        if parts[1] == "c":
+            return self.clients(uid, parts, msg)
         if parts[1] == "v" and len(parts) > 2:
             ld = self.db.one("SELECT * FROM leads WHERE id=?", (re.sub(r"[^0-9a-z-]", "", parts[2])[:20],))
             if not ld:
@@ -1740,11 +1742,48 @@ class App:
             nav.append(("➡️", "nb:p:%d" % (page + 1)))
         if nav:
             rows_kb.append(nav)
+        rows_kb.append([("👥 Клиенты бота", "nb:c:in:0")])
         if not rows:
             lines.append("Пока пусто.")
         mid = msg.get("message_id") if parts[1] == "p" and msg.get("text", "").startswith("📒") else None
         text = "\n".join(lines)
         return self.edit(uid, mid, text, ik(rows_kb)) if mid else self.send(uid, text, ik(rows_kb) if rows_kb else None)
+
+    def clients(self, uid, parts, msg):
+        """parts: nb:c:<in|all>:<page>. in — каттоосу/толуктоосу бүтө электер (кол менен жазуу үчүн)."""
+        flt = parts[2] if len(parts) > 2 and parts[2] in ("in", "all") else "in"
+        page = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 0
+        where = "broker IS NOT 'admin'" + (" AND status IN ('new','wait_dep','pending','rejected','suspended','blocked')" if flt == "in" else "")
+        tot = (self.db.one("SELECT COUNT(*) n FROM users WHERE " + where) or {}).get("n", 0)
+        rows = self.db.q("SELECT * FROM users WHERE " + where + " ORDER BY last_seen DESC LIMIT 10 OFFSET ?", (page * 10,))
+        st = TX["ru"]["st"]
+        lines = ["👥 <b>Клиенты бота</b> · %s · %d (видите только вы)" % ("не активные" if flt == "in" else "все", tot),
+                 "<i>Нажмите @ник или имя — откроется чат с человеком.</i>"]
+        btn = []
+        for i, t in enumerate(rows, 1 + page * 10):
+            at = ("@%s" % E(t["username"])) if t.get("username") else "без @"
+            name = E(t.get("first_name") or "—")
+            seen = S.datetime.fromtimestamp((t.get("last_seen") or 0) / 1000, S.BISHKEK).strftime("%d.%m") if t.get("last_seen") else "—"
+            br = {"bingx": "BingX", "binodex": "BinoDex"}.get(t.get("broker"), "—")
+            lines.append('%d. %s · <a href="tg://user?id=%d">%s</a> · ID <code>%d</code>\n    %s · %s · был %s%s' % (
+                i, at, t["id"], name, t["id"], st.get(t.get("status"), t.get("status") or "—"), br, seen,
+                (" · WA " + E(mask_wa(t["wa"]))) if t.get("wa") else ""))
+            if t.get("status") != "blocked":
+                btn.append(("💬 %d" % i, "adm:rep:%d" % t["id"]))
+        if not rows:
+            lines.append("Пока никого.")
+        kb = [btn[j:j + 5] for j in range(0, len(btn), 5)]
+        nav = []
+        if page > 0:
+            nav.append(("⬅️", "nb:c:%s:%d" % (flt, page - 1)))
+        if (page + 1) * 10 < tot:
+            nav.append(("➡️", "nb:c:%s:%d" % (flt, page + 1)))
+        if nav:
+            kb.append(nav)
+        kb.append([("Все" if flt == "in" else "Не активные", "nb:c:%s:0" % ("all" if flt == "in" else "in")), ("📒 Блокнот", "nb:p:0")])
+        text = "\n".join(lines)
+        mid = msg.get("message_id") if (msg.get("text") or "").startswith("👥") else None
+        return self.edit(uid, mid, text, ik(kb)) if mid else self.send(uid, text, ik(kb))
 
     def pull_leads(self):
         if not link_secret():
