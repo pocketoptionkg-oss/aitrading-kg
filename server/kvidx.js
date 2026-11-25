@@ -4,8 +4,9 @@ const MAX = 500;
 
 export async function idxAdd(kv, name, id) {
   const key = "idx:" + name;
+  const raw = await kv.get(key);   // KV катасы ыргытылсын — болбосо индекс бир id менен кайра жазылып калат
   let a = [];
-  try { a = JSON.parse((await kv.get(key)) || "[]"); } catch (e) { a = []; }
+  try { a = JSON.parse(raw || "[]"); } catch (e) { a = []; }
   if (!Array.isArray(a)) a = [];
   a.push(id);
   a.sort();
@@ -13,7 +14,8 @@ export async function idxAdd(kv, name, id) {
 }
 
 export async function idxAfter(kv, name, after, limit) {
+  const raw = await kv.get("idx:" + name);   // KV катасы — чакыруучуга (500 + detail), бош тизме эмес
   let a = [];
-  try { a = JSON.parse((await kv.get("idx:" + name)) || "[]"); } catch (e) { a = []; }
+  try { a = JSON.parse(raw || "[]"); } catch (e) { a = []; }
   return (Array.isArray(a) ? a : []).filter((id) => id > (after || "")).sort().slice(0, limit || 50);
 }

@@ -27,6 +27,7 @@ import sys
 import threading
 import time
 import traceback
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -1950,8 +1951,15 @@ class App:
         after = self.db.kv("leads_after", "") or ""
         req = urllib.request.Request(S.SITE_URL + "/api/leads?after=" + urllib.parse.quote(after),
                                      headers={"x-ts": ts, "x-sig": link_sig("leads|" + ts, 22), "User-Agent": S.UA})
-        with urllib.request.urlopen(req, timeout=20) as r:
-            items = (json.loads(r.read().decode("utf-8")) or {}).get("items") or []
+        try:
+            with urllib.request.urlopen(req, timeout=20) as r:
+                items = (json.loads(r.read().decode("utf-8")) or {}).get("items") or []
+        except urllib.error.HTTPError as e:   # сайттын JSON жообун (error/detail) катага кошобуз
+            try:
+                body = e.read().decode("utf-8", "replace")[:200]
+            except Exception:  # noqa: BLE001
+                body = ""
+            raise RuntimeError("HTTP %s %s" % (e.code, body.strip())) from None
         for it in items:
             lid = str(it.get("id") or "")
             wa = norm_wa(it.get("wa"))

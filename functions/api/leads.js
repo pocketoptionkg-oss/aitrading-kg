@@ -5,6 +5,14 @@ import { json, sign, same } from "../../server/sign.js";
 import { idxAfter } from "../../server/kvidx.js";
 
 export async function onRequest(context) {
+  try {
+    return await handle(context);
+  } catch (e) {   // CF 1101/500 ордуна — бот себебин көрсүн (мис. KV чеги)
+    return json({ error: "exception", detail: String((e && e.message) || e).slice(0, 300) }, 500);
+  }
+}
+
+async function handle(context) {
   const { request, env } = context;
   if (request.method !== "GET") return json({ error: "method" }, 405);
   if (!env.LEADS_KV || !env.LINK_SECRET) return json({ error: "config" }, 503);
