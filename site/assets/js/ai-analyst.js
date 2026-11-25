@@ -23,6 +23,23 @@
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   function sfx(n) { if (window.AIVOICE && AIVOICE.sfx) AIVOICE.sfx(n); }
 
+  /* Сигналды үн менен окуу: «Евро доллар, вверх, на 5 минут. Вероятность 62 процента.» */
+  var SAY_CUR = {
+    ru: { EUR: "евро", USD: "доллар", GBP: "фунт", JPY: "иена", CHF: "франк", CAD: "канадский доллар", AUD: "австралийский доллар", NZD: "новозеландский доллар", XAU: "золото", BTC: "биткоин", ETH: "эфир", SOL: "солана", XRP: "рипл", USDT: "тезер" },
+    ky: { EUR: "евро", USD: "доллар", GBP: "фунт", JPY: "иена", CHF: "франк", CAD: "канада доллары", AUD: "австралия доллары", NZD: "жаңы зеландия доллары", XAU: "алтын", BTC: "биткоин", ETH: "эфир", SOL: "солана", XRP: "рипл", USDT: "тезер" }
+  };
+  function sayName(name, lang) {
+    var m = SAY_CUR[lang] || SAY_CUR.ru;
+    return String(name || "").replace(/\s*OTC\s*/i, " ").split(/[\/\s]+/).filter(Boolean)
+      .map(function (w) { return m[w.toUpperCase()] || w; }).join(" ");
+  }
+  function sigSpeech(sg, p) {
+    var ru = AT.lang() === "ru", up = sg.dir > 0, pc = Math.round((up ? p : 1 - p) * 100), n = sayName(sg.name, ru ? "ru" : "ky");
+    return ru
+      ? "Сигнал. " + n + ". " + (up ? "Вверх" : "Вниз") + ", на " + sg.exp + " " + (sg.exp % 10 === 1 && sg.exp % 100 !== 11 ? "минуту" : sg.exp % 10 >= 2 && sg.exp % 10 <= 4 && (sg.exp % 100 < 12 || sg.exp % 100 > 14) ? "минуты" : "минут") + ". Вероятность " + pc + " " + (pc % 10 === 1 && pc % 100 !== 11 ? "процент" : pc % 10 >= 2 && pc % 10 <= 4 && (pc % 100 < 12 || pc % 100 > 14) ? "процента" : "процентов") + ". Это вероятность, а не гарантия."
+      : "Сигнал. " + n + ". " + (up ? "Өйдө" : "Ылдый") + ", " + sg.exp + " мүнөткө. Ыктымалдык " + pc + " пайыз. Бул кепилдик эмес.";
+  }
+
   function Analyst(root) {
     this.root = root;
     this.mode = root.getAttribute("data-mode") || "full";
@@ -868,6 +885,7 @@
     if (!redraw) {
       if (dir !== 0) { var all = sigLoad(); all.push(this.sig); sigSave(all); }
       this.syncBest();
+      if (dir !== 0 && window.AIVOICE && AIVOICE.isOn() && AIVOICE.say) AIVOICE.say(sigSpeech(this.sig, p));
       // Авто-режимде телефон чөнтөктө болсо — жаңы сигнал жөнүндө билдирме
       if (dir !== 0 && document.hidden && AT.notifyOn()) {
         AT.notify((dir > 0 ? "▲ " : "▼ ") + this.sig.name + " · " + this.exp + " " + T("aia.min") + " · " + pct(dir > 0 ? p : 1 - p),

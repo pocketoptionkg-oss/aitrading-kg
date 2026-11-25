@@ -50,11 +50,55 @@
     if (audio) { audio.pause(); audio = null; }
   }
 
+  /* Автордун үнү (ElevenLabs, functions/api/tts.js). Туташпаса — браузердин үнү. */
+  var cloud = false, cloudFails = 0, blobs = {};
+  fetch("api/tts", { cache: "no-store" }).then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (j) { cloud = !!(j && j.ok); }).catch(function () {});
+
+  function playUrl(url, finish) {
+    audio = new Audio(url);
+    audio.playbackRate = 1;
+    audio.onended = finish;
+    audio.onerror = finish;
+    sfx("pre");
+    audio.play().catch(finish);
+  }
+  function webSay(text, lang, finish) {
+    if (!synth) return finish();
+    var p = plan(lang);
+    if (!p.voice) return finish();
+    var u = new SpeechSynthesisUtterance(text);
+    u.voice = p.voice; u.lang = p.voice.lang; u.rate = 1.15; u.pitch = 1;
+    u.onend = finish; u.onerror = finish;
+    sfx("pre");
+    synth.speak(u);
+  }
+  /* Каалаган текстти окуу (сигнал, ассистенттин жообу). Promise — бүткөндө. */
+  function say(text, maxMs, force) {
+    text = String(text || "").replace(/[*_#`>]/g, "").replace(/https?:\/\/\S+/g, "").replace(/\s+/g, " ").trim().slice(0, 600);
+    if (!text || (!force && !enabled) || !unlocked) return Promise.resolve();
+    var lang = AT.lang() === "ru" ? "ru" : "ky";
+    stop();
+    return new Promise(function (resolve) {
+      var done = false;
+      var finish = function () { if (!done) { done = true; resolve(); } };
+      setTimeout(finish, maxMs || 45000);
+      var k = lang + "|" + text;
+      if (blobs[k]) return playUrl(blobs[k], finish);
+      if (!cloud || cloudFails >= 3) return webSay(text, lang, finish);
+      fetch("api/tts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: text, lang: lang }) })
+        .then(function (r) { if (!r.ok) throw new Error(r.status); return r.blob(); })
+        .then(function (b) { if (done) return; blobs[k] = URL.createObjectURL(b); playUrl(blobs[k], finish); })
+        .catch(function () { cloudFails++; if (!done) webSay(text, lang, finish); });
+    });
+  }
+
   /* key → Promise (сүйлөп бүткөндө же max мс өткөндө чечилет) */
   function speak(key, maxMs) {
     if (!enabled || !unlocked) return Promise.resolve();
     var lang = AT.lang() === "ru" ? "ru" : "ky";
     maxMs = maxMs || 2600;
+    if ((manifest[lang] || []).indexOf(key) < 0 && cloud && cloudFails < 3) return say(phrase(key, lang), maxMs + 1500);
     stop();
     return new Promise(function (resolve) {
       var done = false;
@@ -130,10 +174,12 @@
 
   window.AIVOICE = {
     speak: speak,
+    say: say,
+    hasAuthor: function () { return cloud && cloudFails < 3; },
     sfx: sfx,
     stop: stop,
     setEnabled: setEnabled,
     isOn: function () { return enabled; },
-    canSpeak: function () { return !!synth || (manifest.ky || []).length > 0 || (manifest.ru || []).length > 0; }
+    canSpeak: function () { return cloud || !!synth || (manifest.ky || []).length > 0 || (manifest.ru || []).length > 0; }
   };
 })();
