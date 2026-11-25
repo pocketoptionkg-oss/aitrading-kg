@@ -26,7 +26,8 @@ export async function onRequest(context) {
   }
 
   if (request.method === "GET") {
-    if (!env.ERRLOG_READ_KEY || !same(request.headers.get("x-key") || "", env.ERRLOG_READ_KEY)) return json({ error: "forbidden" }, 403);
+    const rk = String(env.ERRLOG_READ_KEY || "").trim();   // wrangler stdin аркылуу жаңы сап кошулуп калышы мүмкүн
+    if (!rk || !same((request.headers.get("x-key") || "").trim(), rk)) return json({ error: "forbidden" }, 403);
     const after = new URL(request.url).searchParams.get("after") || "";
     const ids = [];
     let cursor;
