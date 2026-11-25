@@ -24,6 +24,7 @@
   function sfx(n) { if (window.AIVOICE && AIVOICE.sfx) AIVOICE.sfx(n); }
 
   /* Үн — негизги учурларда гана (автордун кыска фразалары): калган кадамдар үнсүз */
+  var NOT_BINODEX = { XAUUSD: 1, XAGUSD: 1 };   // металлдар BinoDex'те жок — BinoDex бөлүмүндө көрсөтүлбөйт
   var VOICE_KEYS = { hello: 1, load: 1, err: 1, sig_up: 1, sig_dn: 1, sig_none: 1, res_win: 1, res_loss: 1, locked: 1, done_up: 1, done_dn: 1, done_flat: 1 };
 
   function Analyst(root) {
@@ -243,7 +244,7 @@
     var bx = this.bx, self = this, hero = this.mode === "hero";
     if (!bx) return [];
     if (this.mkt === "binodex") {
-      return (bx.forex || []).filter(function (f) { return AIENG.hasLive(f.code); }).map(function (f) { return "FX_" + f.code; });
+      return (bx.forex || []).filter(function (f) { return AIENG.hasLive(f.code) && !NOT_BINODEX[f.code]; }).map(function (f) { return "FX_" + f.code; });
     }
     var pop = POP.filter(function (b) { return self.canUse(b); }).slice(0, hero ? 8 : 16);
     var grow = (bx.growing || []).map(function (g) { return g.base; }).filter(function (b) { return self.canUse(b); }).slice(0, 6);
@@ -482,7 +483,7 @@
     var stockSet = {}; stocks.forEach(function (b) { stockSet[b] = 1; });
     var groups;
     if (this.mkt === "binodex") {
-      var fx = (bx.forex || []).map(function (f) { return "FX_" + f.code; });
+      var fx = (bx.forex || []).filter(function (f) { return !NOT_BINODEX[f.code]; }).map(function (f) { return "FX_" + f.code; });
       groups = [["aia.g_fx", fx.filter(function (b) { return !/^FX_X(AU|AG)/.test(b); })], ["aia.g_metal", fx.filter(function (b) { return /^FX_X(AU|AG)/.test(b); })]];
     } else {
       var crypto = (bx.binance || []).concat(bx.kfiles || []).filter(function (b) { return !stockSet[b]; });

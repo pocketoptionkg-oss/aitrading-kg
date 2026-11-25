@@ -408,6 +408,7 @@ def kraken_candles(code, iv, check=True):
 
 
 YAHOO_SYM = {"XAUUSD": "GC=F", "XAGUSD": "SI=F"}
+NOT_BINODEX = {"XAUUSD", "XAGUSD"}          # металлдар BinoDex'те жок
 YAHOO_IV = {1: ("1m", "1d"), 5: ("5m", "5d"), 15: ("15m", "5d"), 60: ("60m", "1mo")}
 
 
@@ -552,7 +553,7 @@ def fx_list(bx):
     if not fx:
         fx = FX_DEFAULT
     live = os.environ.get("BINODEX_API")
-    return [(c, n) for c, n in fx if re.match(r"^[A-Z]{6}$", c) or live]   # Kraken → Yahoo → Binance
+    return [(c, n) for c, n in fx if (re.match(r"^[A-Z]{6}$", c) or live) and c not in NOT_BINODEX]   # Kraken → Yahoo → Binance
 
 
 def bingx_cands(bx):
