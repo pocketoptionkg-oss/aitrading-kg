@@ -157,6 +157,15 @@ FX_PAIRS = [
     ("GBPJPY", "GBP/JPY", "GBPJPY=X", "FX:GBPJPY"),
     ("AUDJPY", "AUD/JPY", "AUDJPY=X", "FX:AUDJPY"),
     ("EURCHF", "EUR/CHF", "EURCHF=X", "FX:EURCHF"),
+    ("EURCAD", "EUR/CAD", "EURCAD=X", "FX:EURCAD"),     # BinoDex
+    ("GBPCAD", "GBP/CAD", "GBPCAD=X", "FX:GBPCAD"),     # BinoDex
+    ("CHFJPY", "CHF/JPY", "CHFJPY=X", "FX:CHFJPY"),     # BinoDex
+    ("GBPAUD", "GBP/AUD", "GBPAUD=X", "FX:GBPAUD"),     # BinoDex
+    ("CADJPY", "CAD/JPY", "CADJPY=X", "FX:CADJPY"),     # BinoDex
+    ("EURAUD", "EUR/AUD", "EURAUD=X", "FX:EURAUD"),     # BinoDex
+    ("AUDCAD", "AUD/CAD", "AUDCAD=X", "FX:AUDCAD"),     # BinoDex
+    ("GBPCHF", "GBP/CHF", "GBPCHF=X", "FX:GBPCHF"),     # BinoDex
+    ("CADCHF", "CAD/CHF", "CADCHF=X", "FX:CADCHF"),     # BinoDex
     ("XAUUSD", "XAU/USD", "GC=F", "OANDA:XAUUSD"),     # алтын: Yahoo'до фьючерс боюнча
     ("XAGUSD", "XAG/USD", "SI=F", "OANDA:XAGUSD"),     # күмүш
 ]

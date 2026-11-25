@@ -88,6 +88,15 @@
       return k.map(function (r) { return { time: Math.floor(r[0] / 1000), open: +r[1], high: +r[2], low: +r[3], close: +r[4], volume: +r[7] }; });
     });
   }
+  /* Yahoo Finance (сайттын /api/fx аркылуу) — BinoDex'теги бардык жуптар: кросстор, иена жуптары ж.б. */
+  function yahooCandles(code, iv) {
+    return getJSON("api/fx?code=" + code + "&iv=" + iv, 9000).then(function (j) {
+      var c = (j && j.candles) || [];
+      var last = c[c.length - 1];
+      if (!last || Date.now() / 1000 - last.time > iv * 60 * 4) throw new Error("stale");
+      return c;
+    });
+  }
   function binodexCandles(code, iv) {
     var api = (window.AITRADING_CONFIG || {}).BINODEX_API || "";
     if (!api) return Promise.reject(new Error("no-binodex-api"));
@@ -99,6 +108,7 @@
     var chain = [
       function () { return binodexCandles(code, L.iv).then(function (c) { return { c: c, provider: "BinoDex" }; }); },
       function () { if (!KRAKEN[code]) throw new Error("no"); return krakenCandles(code, L.iv).then(function (c) { return { c: c, provider: "Kraken" }; }); },
+      function () { return yahooCandles(code, L.iv).then(function (c) { return { c: c, provider: "Yahoo" }; }); },
       function () { if (!BN_FX[code]) throw new Error("no"); return binanceCandles(BN_FX[code], L.iv).then(function (c) { return { c: c, provider: code === "XAUUSD" ? "Binance (PAXG)" : "Binance" }; }); }
     ];
     var i = 0;
@@ -112,7 +122,7 @@
       return { source: "live", provider: r.provider, tf: L.iv + "m", interval: L.iv, horizon: L.h, exp: expMin, updated: null, candles: r.c };
     });
   }
-  function hasLive(code) { return !!(KRAKEN[code] || BN_FX[code] || (window.AITRADING_CONFIG || {}).BINODEX_API); }
+  function hasLive(code) { return /^[A-Z]{6}$/.test(code || ""); }   // Kraken → Yahoo (/api/fx) → Binance
   /* Учурдагы баа (сигналды текшерүү үчүн) */
   function livePrice(code) {
     return liveFX(code, 1).then(function (d) { return d.candles[d.candles.length - 1].close; });

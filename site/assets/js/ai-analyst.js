@@ -297,7 +297,7 @@
         var j = judge(R.ml);
         out.push({ base: b, name: self.nameOf(b), p: R.ml.p, acc: R.ml.acc, bl: R.ml.base, edge: j.edge, dir: j.dir });
       }).catch(function () { /* бул жуп азыр жеткиликсиз — өткөрүп жиберебиз */ }).then(function () {
-        setTimeout(next, fx ? 1000 : 120);               // Kraken: секундасына ~1 суроо
+        setTimeout(next, fx ? 350 : 120);                // FX: Kraken/Yahoo (кэш аркылуу) — тез
       });
     }
     function done() {

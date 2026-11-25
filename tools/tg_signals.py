@@ -407,6 +407,26 @@ def kraken_candles(code, iv, check=True):
     return [{"time": int(r[0]), "open": float(r[1]), "high": float(r[2]), "low": float(r[3]), "close": float(r[4]), "volume": float(r[6])} for r in rows]
 
 
+YAHOO_SYM = {"XAUUSD": "GC=F", "XAGUSD": "SI=F"}
+YAHOO_IV = {1: ("1m", "1d"), 5: ("5m", "5d"), 15: ("15m", "5d"), 60: ("60m", "1mo")}
+
+
+def yahoo_fx_candles(code, iv):
+    """Yahoo Finance: BinoDex'теги бардык валюта жуптары (кросстор, иена жуптары) — 1/5/15/60 мүн шамдар."""
+    itv, rng = YAHOO_IV.get(iv, ("1m", "1d"))
+    j = get_json("https://query1.finance.yahoo.com/v8/finance/chart/%s?interval=%s&range=%s" % (YAHOO_SYM.get(code, code + "=X"), itv, rng), 10)
+    res = ((j.get("chart") or {}).get("result") or [None])[0]
+    if not res or not res.get("timestamp"):
+        raise Fetch("nodata")
+    q = res["indicators"]["quote"][0]
+    out = [{"time": int(t), "open": o, "high": h, "low": l, "close": c, "volume": v or 0}
+           for t, o, h, l, c, v in zip(res["timestamp"], q["open"], q["high"], q["low"], q["close"], q.get("volume") or [0] * len(res["timestamp"]))
+           if None not in (o, h, l, c)]
+    if not out or time.time() - out[-1]["time"] > iv * 60 * 4:
+        raise Fetch("stale")
+    return out
+
+
 def binance_candles(sym, interval, limit=1000):
     err = None
     for host in BINANCE:
@@ -469,6 +489,7 @@ def live_fx(code, exp, cache):
         chain = [("BinoDex", lambda: binodex_candles(code, iv))]
         if code in KRAKEN:
             chain.append(("Kraken", lambda: kraken_candles(code, iv)))
+        chain.append(("Yahoo", lambda: yahoo_fx_candles(code, iv)))
         if code in BN_FX:
             chain.append(("Binance (PAXG)" if code == "XAUUSD" else "Binance", lambda: binance_candles(BN_FX[code], BN_IV[iv])))
         for prov, fn in chain:
@@ -493,6 +514,8 @@ def candles_1m(sg):
     if sg["mkt"] == "binodex":
         if prov == "Kraken":
             return kraken_candles(code, 1, check=False)
+        if prov == "Yahoo" or code not in BN_FX:
+            return yahoo_fx_candles(code, 1)
         return binance_candles(BN_FX[code], "1m")
     if prov == "Binance":
         return binance_candles(base + "USDT", "1m")
@@ -529,7 +552,7 @@ def fx_list(bx):
     if not fx:
         fx = FX_DEFAULT
     live = os.environ.get("BINODEX_API")
-    return [(c, n) for c, n in fx if c in KRAKEN or c in BN_FX or live]
+    return [(c, n) for c, n in fx if re.match(r"^[A-Z]{6}$", c) or live]   # Kraken → Yahoo → Binance
 
 
 def bingx_cands(bx):
