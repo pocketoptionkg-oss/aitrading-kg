@@ -32,6 +32,25 @@ NAMES = {"BTC": "Bitcoin", "ETH": "Ethereum", "SOL": "Solana", "XRP": "XRP", "BN
 PAIR = {"NCCOGOLD2USD": "GOLD (XAU/USD)", "NCSINASDAQ1002USD": "NASDAQ 100", "NCSKNVDA2USD": "NVIDIA (NVDA)"}
 
 
+_CT = {"t": 0, "map": {}}
+
+
+def contracts():
+    """BingX'тин бессрочный фьючерстеринин тирүү тизмеси {символ: колдонмодогу аты}, 6 саатта бир жаңырат.
+    Тизмеде жок / сатылбай турган монета сигналга кирбейт."""
+    if time.time() - _CT["t"] < 6 * 3600 and _CT["map"]:
+        return _CT["map"]
+    try:
+        d = S.get_json(API.replace("/v3", "") + "/v2/quote/contracts", 15).get("data") or []
+        m = {x["symbol"][:-5]: (x.get("displayName") or x["symbol"]) for x in d
+             if str(x.get("symbol", "")).endswith("-USDT") and x.get("status") == 1 and x.get("apiStateOpen") in (True, "true")}
+        if m:
+            _CT.update(t=time.time(), map=m)
+    except Exception as e:  # noqa: BLE001 — тизме алынбаса мурдагысы колдонулат
+        print("! contracts: %s" % e)
+    return _CT["map"]
+
+
 def label(sym):
     return PAIR.get(sym, sym + "/USDT")
 
@@ -158,8 +177,12 @@ def analyze(sym, hz):
 
 def scan(hz, skip=()):
     rows = []
+    live = contracts()
     for sym in UNIVERSE:
         if sym in skip:
+            continue
+        if live and sym not in live:
+            rows.append({"sym": sym, "hz": hz, "dir": 0, "why": "BingX фьючерсинде жок"})
             continue
         try:
             r = analyze(sym, hz)
@@ -186,6 +209,7 @@ def msg_signal(tr, lang):
     lines = ["%s <b>%s</b>" % ("🟢" if up else "🔴", e(L["h_" + tr["hz"]])), S.LINE,
              ("💎 <b>%s</b> · %s" % (e(label(tr["sym"])), e(NAMES[tr["sym"]]))) if tr["sym"] in NAMES else "💎 <b>%s</b> · BingX" % e(label(tr["sym"])),
              "%s <b>%s</b> · %s <b>%s</b>" % ("📈" if up else "📉", e(L["long"] if up else L["short"]), e(L["prob"]), dp),
+             "🔎 %s: <b>%s</b>" % ("В BingX (фьючерсы)" if lang == "ru" else "BingX'тен издөө (фьючерс)", e((contracts() or {}).get(tr["sym"], tr["sym"] + "-USDT"))),
              ] + (["📐 " + ("Трендовый вход: EMA20/50, MACD и RSI подтверждают направление" if lang == "ru" else "Тренд боюнча кирүү: EMA20/50, MACD жана RSI багытты ырастайт")] if tr.get("kind") == "trend" else []) + [
              "🎯 %s: <b>%s – %s</b>" % (e(L["zone"]), money(tr["zone"][0]), money(tr["zone"][1])),
              "🛑 %s: <b>%s</b>" % (e(L["sl"]), money(tr["sl"])),
