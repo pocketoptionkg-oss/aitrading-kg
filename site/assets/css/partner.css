@@ -1,0 +1,70 @@
+/* AITRADING.KG — «Маркетинг»: өнөктөштүк программа жана башкаруу панели (стиль «Аврора»: style.css'тин өзгөрмөлөрү) */
+.pp-hero { position: relative; overflow: hidden; padding: clamp(22px, 4vw, 36px); border-radius: 22px; margin-bottom: 18px;
+  background: radial-gradient(120% 140% at 0% 0%, rgba(92, 232, 170, 0.16), transparent 55%),
+              radial-gradient(120% 140% at 100% 100%, rgba(59, 123, 255, 0.16), transparent 55%), var(--card);
+  border: 1px solid var(--line-2); scroll-margin-top: calc(var(--header-h) + 16px); }
+.pp-hero h2 { font-size: clamp(1.4rem, 3.4vw, 2.1rem); margin: 0 0 10px; max-width: 26em; }
+.pp-hero > p { color: #c9d2df; max-width: 46em; }
+.pp-share { display: inline-flex; align-items: baseline; gap: 10px; margin: 6px 0 16px; padding: 10px 16px; border-radius: 14px;
+  background: rgba(92, 232, 170, 0.08); border: 1px solid rgba(92, 232, 170, 0.35); }
+.pp-share b { font: 700 clamp(2rem, 6vw, 2.8rem)/1 var(--font-head); color: var(--mint); }
+.pp-share span { color: #cfeee0; font-size: 0.95rem; max-width: 26em; }
+.pp-steps { display: grid; gap: 12px; grid-template-columns: 1fr; margin: 18px 0; padding: 0; list-style: none; counter-reset: pp; }
+@media (min-width: 760px) { .pp-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.pp-steps li { position: relative; padding: 16px 16px 16px 56px; border-radius: 16px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); counter-increment: pp; }
+.pp-steps li::before { content: counter(pp); position: absolute; left: 16px; top: 16px; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+  font: 700 0.85rem/1 var(--font-head); color: var(--mint-ink); background: var(--mint); }
+.pp-steps h3 { font-size: 1rem; margin: 2px 0 6px; }
+.pp-steps p { margin: 0; color: var(--muted); font-size: 0.93rem; }
+.pp-facts { display: grid; gap: 10px; grid-template-columns: 1fr; margin: 0 0 18px; }
+@media (min-width: 760px) { .pp-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.pp-fact { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; background: rgba(255, 255, 255, 0.025); border: 1px solid var(--line); }
+.pp-fact svg { width: 18px; height: 18px; flex: none; color: var(--mint); margin-top: 3px; }
+.pp-fact p { margin: 0; color: #c9d2df; font-size: 0.94rem; }
+.pp-cta { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 6px; }
+.pp-cta .muted { font-size: 0.88rem; margin: 0; }
+
+/* Панель */
+#pp { margin-bottom: 18px; scroll-margin-top: calc(var(--header-h) + 16px); }
+#pp > * + * { margin-top: 14px; }
+.pp-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.pp-head h2 { margin: 0; font-size: clamp(1.3rem, 3vw, 1.8rem); }
+.pp-code { font: 500 0.9rem/1 var(--font-body); color: var(--muted); margin-left: 6px; white-space: nowrap; }
+.pp-code code { color: var(--yellow); font-size: 1rem; }
+.pp-card { padding: 20px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); }
+.pp-card h3 { margin: 0 0 12px; font-size: 1.1rem; }
+.pp-card h4 { margin: 18px 0 8px; font-size: 0.95rem; color: var(--muted); }
+.pp-msg p { margin: 0 0 14px; color: #c9d2df; }
+.pp-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.pp-main { border-color: rgba(92, 232, 170, 0.35); }
+.pp-big { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 14px; border-radius: 14px;
+  background: rgba(0, 0, 0, 0.25); border: 1px dashed rgba(92, 232, 170, 0.45); margin-bottom: 10px; }
+.pp-big code { font-size: clamp(0.95rem, 2.6vw, 1.15rem); color: var(--mint); word-break: break-all; min-width: 0; }
+.pp-main > p { margin: 0 0 8px; font-size: 0.92rem; }
+.pp-more summary { cursor: pointer; color: var(--text); font-weight: 600; padding: 6px 0; }
+.pp-more .muted { font-size: 0.88rem; margin: 8px 0 0; }
+.pp-link { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.pp-link-l { min-width: 0; display: grid; gap: 2px; }
+.pp-link-l span { font-size: 0.85rem; color: var(--muted); }
+.pp-link-l code { font-size: 0.9rem; word-break: break-all; }
+.pp-kpis { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 900px) { .pp-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.pp-kpis-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+.pp-kpi { display: grid; gap: 4px; align-content: start; padding: 16px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); min-width: 0; }
+.pp-card .pp-kpi { background: rgba(255, 255, 255, 0.025); }
+.pp-kpi-l { font-size: 0.85rem; color: var(--muted); }
+.pp-kpi b { font: 700 clamp(1.35rem, 4vw, 1.9rem)/1.1 var(--font-head); color: var(--text); overflow-wrap: anywhere; }
+.pp-kpi small { font-size: 0.8rem; color: var(--dim); }
+.pp-mint { border-color: rgba(92, 232, 170, 0.35); }
+.pp-mint b { color: var(--mint); }
+.pp-yellow { border-color: rgba(255, 204, 21, 0.4); }
+.pp-yellow b { color: var(--yellow); }
+.pp-note { font-size: 0.88rem; margin: 12px 0 0; }
+.pp-tw { overflow-x: auto; }
+.pp-t { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+.pp-t th, .pp-t td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.pp-t th { color: var(--muted); font-weight: 600; font-size: 0.82rem; }
+.pp-t td:not(:first-child), .pp-t th:not(:first-child) { text-align: right; }
+.pp-t td:last-child, .pp-t th:last-child { text-align: right; }
+.pp-upd { font-size: 0.82rem; margin: 4px 0 0; }
+@media (max-width: 420px) { .pp-kpis-3 { grid-template-columns: 1fr !important; } .pp-big .pp-row { width: 100%; } .pp-big .pp-row .btn { flex: 1; } }

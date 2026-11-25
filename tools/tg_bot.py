@@ -11,6 +11,8 @@
   TELEGRAM_ADMIN_IDS   — кошумча админдер, үтүр менен (милдеттүү эмес)
   BINGX_API_KEY / BINGX_API_SECRET — BingX Agent API (окуу гана): UID, толуктоо, таза актив
   TG_MIN_BALANCE       — BingX'те доступ үчүн минималдуу таза актив, USDT (демейки 0: толуктоо болсо жетиштүү)
+  TELEGRAM_CHANNEL     — автордун каналы (@username же -100…): шашылыш жаңылыктар жана твиттер алгач ушул жерге (tools/tg_news.py)
+  LIVE_URL / LIVE_KEY  — сайттын /api/live дареги жана сыры: плашка, твиттер, тиркемеге push (node tools/live_keys.mjs)
 BinoDex'тин API'си азырынча жок: BinoDex ID'лерин админ ✅/❌ менен ырастайт (binodex_check() — заглушка).
 """
 import argparse
@@ -42,6 +44,13 @@ try:                                                  # сүрөттөр (Pillow
         CARDS = None
 except Exception:  # noqa: BLE001
     CARDS = None
+import tg_news as N  # noqa: E402  — шашылыш жаңылыктар, твиттер (канал → сайт → тиркеме)
+import tg_partners as PT  # noqa: E402  — өнөктөштүк программа («Маркетинг» → панель)
+try:                                                  # ликвидациялар, киттер, күндүн жыйынтыгы, VIP жарнамасы
+    import tg_market as MK  # noqa: E402
+except Exception as _e:  # noqa: BLE001
+    print("! tg_market: %s" % _e)
+    MK = None
 
 HERE = S.HERE
 DB_PATH = os.environ.get("TG_DB") or os.path.join(HERE, "tg_bot.db")
@@ -115,7 +124,7 @@ for _lang, rows in MENU.items():
         ACTIONS[_txt] = _act
 ACTIONS[ADMIN_BTN] = "admin"
 CMDS = {"/start": "start", "/signals": "signals", "/register": "register", "/learn": "learn", "/profile": "profile",
-        "/help": "support", "/lang": "lang", "/admin": "admin", "/find": "find"}
+        "/help": "support", "/lang": "lang", "/admin": "admin", "/find": "find", "/partner": "partner"}
 
 TX = {
     "kg": {
@@ -692,7 +701,7 @@ class Engine(S.Bot):
 
 
 class App:
-    def __init__(self, signals=True, exp=None):
+    def __init__(self, signals=True, exp=None, news=True):
         self.tg = S.Telegram(False)
         self.db = DB(DB_PATH)
         self.bingx = BingXAgent()
@@ -714,6 +723,9 @@ class App:
                                    force=False, verbose=False)   # BingX — фьючерс гана (tg_futures); спот: TG_SPOT_BINGX=1
             self.engine = Engine(a, self)
         self.username = None
+        self.news = N.NewsDesk(self, enabled=news)
+        self.market = MK.MarketDesk(self, self.news) if (MK is not None and news) else None
+        self.partners = PT.Partners(self)
 
     # ---------- Telegram жардамчылары ----------
     def api(self, method, payload, chat=None, timeout=20):
@@ -777,7 +789,10 @@ class App:
         return self.send(chat, caption, kb)
 
     def send(self, chat, text, kb=None, preview=False, thread=None):
-        p = {"chat_id": chat, "text": text, "parse_mode": "HTML", "link_preview_options": {"is_disabled": not preview}}
+        """preview: False/True же шилтеме (str) — анда ошол беттин сүрөтү чоң болуп тексттин үстүндө чыгат."""
+        lp = ({"url": preview, "prefer_large_media": True, "show_above_text": True} if isinstance(preview, str) and preview.startswith("http")
+              else {"is_disabled": not preview})
+        p = {"chat_id": chat, "text": text, "parse_mode": "HTML", "link_preview_options": lp}
         if thread:
             p["message_thread_id"] = thread
         if kb is not None:
@@ -898,6 +913,8 @@ class App:
             linked = [(self.db.kv("ch:" + k), self.db.kv("th:" + k)) for k in ("bingx", "binodex")]
             gk = "gask:%s:%s" % (gch.get("id"), th or 0)
             cmd = (m.get("text") or "").strip().lower().split("@")[0]
+            if gid and self.is_admin(gid) and self.news.on_group_cmd(gch, th, cmd):   # /news — жаңылыктар ушул темага
+                return None
             if gid and self.is_admin(gid) and (cmd == "/link" or (cmd in ("тест", "test") and here not in linked)):
                 self.db.kv_set(gk, 1)
                 return self.ask_channel(gid, gch, th)
@@ -907,6 +924,7 @@ class App:
         text = (m.get("text") or "").strip()
         start_arg = text.split(" ", 1)[1].strip() if text.startswith("/start ") else ""
         src = start_arg[:32] if start_arg and not start_arg.startswith("bx_") else None
+        was_new = self.db.user(m["from"]["id"]) is None
         u = self.ensure_user(m["from"], src)
         uid = u["id"]
         try:
@@ -922,6 +940,13 @@ class App:
             u = self.db.user(uid)
         if start_arg.startswith("bx_"):                    # BinoDex'тен кайтты (OAuth)
             return self.oauth_result(u, start_arg[:80])
+        if start_arg == "vip":                             # VIP жарнамасынан келди → дароо катталуу
+            return self.open(u, "register")
+        if start_arg == "partner" or start_arg.startswith("p_"):   # өнөктөштүн шилтемеси же «Башкаруу панели»
+            r = self.partners.on_start(u, start_arg[:24], was_new)
+            if r is not None:
+                return r
+            u = self.db.user(uid)
         cmd = text.split(" ", 1)[0].split("@", 1)[0].lower() if text.startswith("/") else None
 
         # админдин кадамдары (рассылка, жооп)
@@ -931,6 +956,10 @@ class App:
                 return self.bc_content(u, m)
             if d and d.get("stage") == "custom":
                 return self.bc_custom(u, text)
+            if self.partners.on_admin_text(u, text):       # өнөктөш: BinoDex шилтемеси / айлык киреше
+                return True
+            if self.news.on_admin_text(u, m, text):        # шашылыш жаңылык / твиттин шилтемеси
+                return True
             rep = self.db.kv("reply:%d" % uid)
             if rep:
                 self.db.kv_set("reply:%d" % uid, None)
@@ -1010,11 +1039,13 @@ class App:
             return self.send(uid, T(u, "support"))
         if act == "admin" and self.is_admin(uid):
             return self.adm_home(u)
+        if act == "partner":
+            return self.partners.show(u)
         return self.send(uid, T(u, "menu_hint"), self.menu_kb(u))
 
     # ---------- Катталуу ----------
     def show_broker(self, u, b, mid=None):
-        ref = self.refs.get(b)
+        ref = self.partners.ref_for(u, b) or self.refs.get(b)
         name = "BingX" if b == "bingx" else "BinoDex"
         code = ref_codes().get(b)
         oauth = b == "binodex" and oauth_ready()
@@ -1052,6 +1083,8 @@ class App:
 
     def on_step(self, u, m, text):
         uid, step = u["id"], u["step"]
+        if step.startswith("pt:"):
+            return self.partners.on_step(u, text)
         if step == "wa":
             c = m.get("contact") or {}
             wa = norm_wa(c.get("phone_number") or text)
@@ -1211,6 +1244,8 @@ class App:
             rows.append([(T(u, "btn_reactivate"), "reactivate")])
         elif u.get("trader_id") and u["status"] in ("wait_dep", "active", "new"):
             rows.append([(T(u, "btn_recheck"), "recheck")])
+        rows.append(self.news.user_row(u))
+        rows.append([("🤝 Партнёрка" if u.get("lang") == "ru" else "🤝 Өнөктөштүк", "menu:partner")])
         rows.append([(T(u, "btn_change"), "menu:register")])
         return self.send(uid, text, ik(rows))
 
@@ -1227,6 +1262,14 @@ class App:
             return self.on_admin_cb(u, data, msg)
         if data.startswith("nb:"):
             return self.notebook(uid, data, msg)
+        if data.startswith("pt:"):
+            return self.partners.on_cb(u, data, msg)
+        if data.startswith("pa:"):
+            return self.partners.on_admin_cb(u, data, msg) if self.is_admin(uid) else None
+        if data.startswith("mq:"):
+            return self.market.on_admin_cb(u, data, msg) if (self.market and self.is_admin(uid)) else None
+        if data.startswith("nw:"):
+            return self.news.on_admin_cb(u, data, msg) if self.is_admin(uid) else None
         if data.startswith("chset:") and self.is_admin(uid):
             _, kind, rest = data.split(":", 2)
             cid, _, th = rest.partition(":")
@@ -1238,6 +1281,8 @@ class App:
             return None
         if data == "chinv":
             return self.send_invite(u)
+        if data in ("nws:on", "nws:off"):
+            return self.news.on_user_cb(u, data)
         if data.startswith("reg:"):
             self.db.kv_set("regb:%d" % uid, data[4:])
             return self.show_broker(u, data[4:])
@@ -1307,7 +1352,10 @@ class App:
             "✓" if self.bingx.ok() else "ачкыч жок (кол менен)", binodex_status(), "⏸ токтотулган" if paused else ("▶️ иштеп жатат" if self.engine else "өчүк (--no-signals)"))
         kb = ik([[("📣 Рассылка", "adm:bc"), ("🧾 Заявкалар (%d)" % pend, "adm:queue")],
                  [("👥 Трейдерлер", "adm:users"), ("📊 Статистика", "adm:stats")],
-                 [("▶️ Сигналдарды улантуу" if paused else "⏸ Сигналдарды токтотуу", "adm:sig")]] + ([[("📒 Блокнот заявок", "nb:p:0"), ("👥 Клиенты бота", "nb:c:in:0")], [("📥 Скачать PDF (заявки + клиенты)", "nb:pdf")]] if u["id"] == self.owner else []))
+                 [("▶️ Сигналдарды улантуу" if paused else "⏸ Сигналдарды токтотуу", "adm:sig")], self.partners.admin_row()]
+                + ([[("📒 Блокнот заявок", "nb:p:0"), ("👥 Клиенты бота", "nb:c:in:0")], [("📥 Скачать PDF (заявки + клиенты)", "nb:pdf")]] if u["id"] == self.owner else []) + self.news.admin_rows()
+                + (self.market.admin_rows() if self.market else []))
+        text += "\n" + self.news.status_line() + (("\n" + self.market.status_line()) if self.market else "")
         if mid:
             return self.edit(u["id"], mid, text, kb)
         return self.send(u["id"], text, kb)
@@ -2043,9 +2091,9 @@ class App:
             time.sleep(1800)
 
     def set_commands(self):
-        for lang, desc in (("kg", ["Баштоо", "⭐ Сигналдар", "📝 Брокерде катталуу", "📚 Окуу", "👤 Профиль", "💬 Колдоо", "🌍 Тил"]),
-                           ("ru", ["Старт", "⭐ Сигналы", "📝 Регистрация у брокера", "📚 Обучение", "👤 Профиль", "💬 Поддержка", "🌍 Язык"])):
-            cmds = [{"command": c, "description": d} for c, d in zip(["start", "signals", "register", "learn", "profile", "help", "lang"], desc)]
+        for lang, desc in (("kg", ["Баштоо", "⭐ Сигналдар", "📝 Брокерде катталуу", "📚 Окуу", "👤 Профиль", "💬 Колдоо", "🌍 Тил", "🤝 Өнөктөштүк (60%)"]),
+                           ("ru", ["Старт", "⭐ Сигналы", "📝 Регистрация у брокера", "📚 Обучение", "👤 Профиль", "💬 Поддержка", "🌍 Язык", "🤝 Партнёрка (60%)"])):
+            cmds = [{"command": c, "description": d} for c, d in zip(["start", "signals", "register", "learn", "profile", "help", "lang", "partner"], desc)]
             p = {"commands": cmds}
             if lang == "ru":
                 p["language_code"] = "ru"
@@ -2069,10 +2117,17 @@ class App:
             threading.Thread(target=self.loop_signals, daemon=True).start()
         threading.Thread(target=self.loop_maint, daemon=True).start()
         threading.Thread(target=self.loop_leads, daemon=True).start()
+        threading.Thread(target=self.partners.loop, daemon=True).start()
         if AG is not None and os.environ.get("TG_AGENT", "1") != "0":
             threading.Thread(target=self.loop_agent, daemon=True).start()
         if FUT is not None and self.engine and os.environ.get("TG_FUTURES", "1") != "0":
             threading.Thread(target=self.loop_futures, daemon=True).start()
+        if self.news.enabled:
+            threading.Thread(target=self.news.loop, daemon=True).start()
+            if self.market:
+                threading.Thread(target=self.market.loop, daemon=True, name="market").start()
+                print("💥 Рынок: ликвидациялар (Binance+Bybit), киттер, жыйынтык %02d:00, VIP %02d:00" % (MK.DAY_H, MK.PROMO_H))
+            print("⚠️ Шашылыш: рынок эрежеси ар 2 мүнөттө · %s" % self.news.status_line())
         threading.excepthook = lambda a: self.report_err("thread:%s" % getattr(a.thread, "name", "?"), a.exc_value)
         offset = int(self.db.kv("offset") or 0)
         while True:
@@ -2184,6 +2239,7 @@ def main():
     ap.add_argument("--no-signals", action="store_true", help="сигнал сканерисиз")
     ap.add_argument("--exp", default=os.environ.get("TG_EXP", "5"), help="BinoDex экспирациясы: 5 (догон — 3/2 өзү)")
     ap.add_argument("--lang", default=os.environ.get("TG_LANG", "kg"), choices=["kg", "ru"])
+    ap.add_argument("--no-news", action="store_true", help="шашылыш жаңылыктарсыз (рынок плашкасы, твиттер)")
     a = ap.parse_args()
     if a.setup:
         return cmd_setup(a.lang)
@@ -2191,7 +2247,7 @@ def main():
         print("TELEGRAM_BOT_TOKEN коюлган эмес — бот иштебейт.\nТуташтыруу: Телеграм_бот_туташтыруу.bat (ОКУ_МЕНИ.md, 8-бөлүм).")
         return 2
     exp = sorted({max(1, min(240, int(float(x)))) for x in str(a.exp).split(",") if x.strip()})
-    return App(signals=not a.no_signals, exp=exp).run()
+    return App(signals=not a.no_signals, exp=exp, news=not a.no_news).run()
 
 
 if __name__ == "__main__":

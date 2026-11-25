@@ -18,9 +18,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:ital,wght@0,600;0,700;0,800;1,800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/partner.css">
   <script src="assets/js/config.js" defer></script>
   <script src="assets/js/i18n.js" defer></script>
   <script src="assets/js/main.js" defer></script>
+  <script src="assets/js/partner.js" defer></script>
 </head>
 <body data-page="marketing">
   <div data-site-header></div>
@@ -29,13 +31,42 @@
     <div class="container page-head">
       <span class="eyebrow" data-i18n="nav.marketing">Маркетинг</span>
       <h1 data-i18n="mk.h1">Маркетинг жана өнөктөштүк</h1>
-      <p data-i18n="mk.lead">Трейдинг платформаларынын партнёрдук программасы кантип иштейт, кантип өнөктөш болсо болот жана жарнаманы кантип чынчыл жасаш керек.</p>
+      <p data-i18n="mk.lead">TRADER KG менен өнөктөш болуңуз: жеке шилтеме, статистика жана чакырган трейдерлериңиз үчүн автордун кирешесинин 60%ы. Төмөндө — чынчыл жарнаманын эрежелери.</p>
     </div>
 
     <div class="container">
+      <!-- Өнөктөштүк программа (tools/tg_partners.py + functions/api/partner.js + assets/js/partner.js) -->
+      <div id="pp" hidden aria-live="polite"></div>
+
+      <section class="pp-hero" id="partner">
+        <span class="eyebrow" data-i18n="mk.pp_eyebrow">Өнөктөштүк программа</span>
+        <h2 data-i18n="mk.pp_h">Трейдерлерди BinoDex жана BingX'ке чакырыңыз — жеке шилтеме жана ачык статистика</h2>
+        <p data-i18n="mk.pp_p">Каалаган адам өнөктөш боло алат. Telegram-боттон жеке шилтеме аласыз, аны досторуңузга, каналыңызга же соцтармакка бөлүшөсүз. Ким өттү, ким ботко келди, катталды жана эсебин толуктады — баары панелде көрүнөт.</p>
+        <div class="pp-share"><b>60%</b><span data-i18n="mk.pp_share">сиз чакырган трейдерлер үчүн брокер авторго (TRADER KG) төлөгөн кирешенин 60%ы — сизге</span></div>
+
+        <ol class="pp-steps">
+          <li><h3 data-i18n="mk.pp_s1t">Ботко кириңиз</h3><p data-i18n="mk.pp_s1p">«Башкаруу панелине кирүү» → Telegram-бот → «✅ Өнөктөш болуу». Сырсөз жана почта керек эмес.</p></li>
+          <li><h3 data-i18n="mk.pp_s2t">Шилтемени бөлүшүңүз</h3><p data-i18n="mk.pp_s2p">Жеке шилтемеңиз aitrading.kg/r/… түрүндө болот. Ал аркылуу келген ар бир адам сизге жазылат.</p></li>
+          <li><h3 data-i18n="mk.pp_s3t">Статистика жана төлөм</h3><p data-i18n="mk.pp_s3p">Панелде: өтүүлөр, ботко келгендер, катталгандар, толуктагандар жана эсептелген сумма. Төлөм айына бир жолу.</p></li>
+        </ol>
+
+        <div class="pp-facts">
+          <div class="pp-fact"><svg aria-hidden="true"><use href="#i-check"/></svg><p data-i18n="mk.pp_f1">60% автордун брокерден алган кирешесинен эсептелет. Кирешени автор айына бир жолу брокердин кабинетинен киргизет, панелде ар бир ай көрүнөт.</p></div>
+          <div class="pp-fact"><svg aria-hidden="true"><use href="#i-check"/></svg><p data-i18n="mk.pp_f2">Төлөмдү автор кол менен жөнөтөт (мисалы, USDT). Реквизиттерди ботко өзүңүз жазасыз.</p></div>
+          <div class="pp-fact"><svg aria-hidden="true"><use href="#i-check"/></svg><p data-i18n="mk.pp_f3">Ботко сиздин шилтеме менен биринчи жолу келген адам гана сизге жазылат. Мурда ботто болгондор өзгөрбөйт.</p></div>
+          <div class="pp-fact"><svg aria-hidden="true"><use href="#i-shield"/></svg><p data-i18n="mk.pp_f4">Чакырылгандардын аты, номери жана ID'си көрсөтүлбөйт — эсептер гана. Алардын жеке маалыматы корголот.</p></div>
+        </div>
+        <div class="callout"><svg aria-hidden="true"><use href="#i-warn"/></svg><p data-i18n="mk.pp_warn">Киреше кепилденбейт. Брокер төлөбөсө (адамдар катталбаса, толуктабаса же соода кылбаса) — эсептелген сумма 0. Ойдон чыгарылган сандар жок: панелде брокерден чындап түшкөн киреше гана.</p></div>
+
+        <div class="pp-cta" data-pp-hide>
+          <a class="btn btn-mint btn-lg" data-pp-login href="#"><svg aria-hidden="true"><use href="#i-tg"/></svg><span data-i18n="mk.pp_login">Башкаруу панелине кирүү</span></a>
+          <p class="muted" data-i18n="mk.pp_login_note">Кирүү Telegram-бот аркылуу: бот панелге жеке шилтеме берет.</p>
+        </div>
+      </section>
+
       <!-- Партнёрдук программа -->
       <section class="lesson">
-        <h2><span class="badge badge-yellow">1</span><span data-i18n="mk.p_h">Партнёрдук программа деген эмне?</span></h2>
+        <h2><span class="badge badge-yellow">1</span><span data-i18n="mk.p_h">Брокерлердин партнёрдук программасы деген эмне?</span></h2>
         <p data-i18n="mk.p_p">Платформа сизге жеке шилтеме берет. Ал шилтеме аркылуу жаңы колдонуучу катталып, платформада соода кылса, платформа өз эрежелери боюнча сизге сыйакы төлөйт. BinoDex'тин жана BingX'тин өз партнёрдук программалары бар.</p>
         <div class="callout"><svg aria-hidden="true"><use href="#i-warn"/></svg><p data-i18n="mk.p_warn">Киреше кепилденбейт: сыйакы сиз тарткан адамдардын активдүүлүгүнө жана платформанын шарттарына жараша болот — нөл болушу да мүмкүн. Шарттарды платформанын расмий партнёрдук бөлүмүнөн окуңуз.</p></div>
         <ol class="gsteps">

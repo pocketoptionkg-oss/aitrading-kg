@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title data-i18n="meta.title.news">Жаңылыктар жана окуялар — AITRADING.KG</title>
-  <meta name="description" data-i18n-attr="content:meta.desc.news" content="Рыноктун башкы жаңылыктары: крипто, валюта, акциялар. Экономикалык календарь — баага таасир эте турган окуялар.">
+  <meta name="description" data-i18n-attr="content:meta.desc.news" content="Рыноктун башкы жаңылыктары кыргызча жана орусча: крипто, валюта, акциялар. Белгилүү инвесторлордун пикири, техникалык анализ, «Шашылыш» плашкасы жана экономикалык календарь.">
   <meta name="theme-color" content="#070b12">
   <link rel="canonical" href="https://aitrading.kg/news.html">
   <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
@@ -21,6 +21,7 @@
   <link rel="stylesheet" href="assets/css/style.css">
   <script src="assets/js/config.js" defer></script>
   <script src="assets/js/i18n.js" defer></script>
+  <script src="assets/js/i18n-news.js" defer></script>
   <script src="assets/js/main.js" defer></script>
   <script src="assets/js/news.js" defer></script>
   <script src="assets/js/posts.js" defer></script>
@@ -30,36 +31,155 @@
 
   <main id="main">
     <div class="container page-head">
-      <span class="updated"><span class="dot"></span><span data-i18n="n.live">Жандуу лента · TradingView</span></span>
+      <span class="updated"><span class="dot"></span><span data-i18n="n.live2">Кыргызча · Орусча · жандуу маалымат</span></span>
       <h1 data-i18n="n.h1">Жаңылыктар жана окуялар</h1>
-      <p data-i18n="n.lead">Рынокко эмне таасир этип жатканын бир жерден көрүңүз. Жаңылыктар орус тилинде, булагы — TradingView жана анын өнөктөштөрү.</p>
+      <p data-i18n="n.lead2">Рынокко эмне таасир этип жатканын бир жерден көрүңүз: башкы жаңылыктар, белгилүү адамдардын твиттери жана инвесторлордун пикири, техникалык анализ. Ар бир жаңылыктын жанында түп нускасына шилтеме бар.</p>
     </div>
 
     <div class="container">
-      <div class="callout" style="margin-bottom:18px"><svg aria-hidden="true"><use href="#i-info"/></svg><p data-i18n="n.tip">Кеңеш: чоң жаңылык (мисалы, АКШнын пайыздык чени же инфляция) чыкканда баа бир нече мүнөттө кескин өзгөрүшү мүмкүн. Мындай учурда жаңы баштагандарга соода кылбай, күтүп туруу коопсузураак.</p></div>
+      <!-- Рынок пульсу: «Шашылыш» плашкасынын эрежеси ачык -->
+      <section class="panel pulse" id="pulse" aria-labelledby="pulse-h">
+        <div class="panel-head">
+          <h2 id="pulse-h" data-i18n="n.pulse_h">Рынок пульсу жана «Шашылыш» эрежеси</h2>
+          <small data-pulse-upd></small>
+        </div>
+        <div class="pulse-body">
+          <div class="pulse-stats">
+            <div class="pstat"><span data-i18n="n.p24">Медиана · 24 саат</span><b data-p24>…</b><small data-p24th></small></div>
+            <div class="pstat"><span data-i18n="n.p1h">Медиана · 1 саат</span><b data-p1h>…</b><small data-p1hth></small></div>
+            <div class="pstat"><span data-i18n="n.pbreadth">Өсүүдө / түшүүдө</span><b data-pbr>…</b><small data-psrc></small></div>
+          </div>
+          <div class="pulse-coins" data-pcoins></div>
+          <p class="pulse-rule" data-i18n="n.rule">«Шашылыш» плашкасы бардык беттердин үстүндө чыгат: капитализациясы боюнча 10 ири криптовалютанын 24 сааттык өзгөрүүсүнүн медианасы ±5% же 1 сааттыгы ±3% жеткенде, же TRADER KG шашылыш жаңылык жарыялаганда. Маалымат Binance'тен түз алынат (запасы — BingX). Ар бир санды TradingView'дон текшерсе болот.</p>
+          <div class="pulse-acts">
+            <a class="btn btn-ghost btn-sm" href="https://ru.tradingview.com/symbols/CRYPTOCAP-TOTAL/" target="_blank" rel="noopener nofollow"><span data-i18n="n.verify">TradingView'дон текшерүү</span> ↗</a>
+          </div>
+          <div class="ntf-box">
+            <h3 data-i18n="n.ntf_h">Шашылыш билдирмелерди алуу</h3>
+            <div class="ntf-row">
+              <button type="button" class="btn btn-mint btn-sm" data-ntf-toggle><span data-ntf-label>🔔 Сайтта жана тиркемеде күйгүзүү</span></button>
+              <a class="btn btn-ghost btn-sm" data-bot href="#"><svg aria-hidden="true"><use href="#i-tg"/></svg><span data-i18n="n.ntf_bot">Telegram-ботто</span></a>
+            </div>
+            <p class="ntf-note" data-i18n="n.ntf_note">Ботко жазылгандар билдирмени Telegram'да алышат. Сайт же тиркеме (PWA) — ушул баскыч менен.</p>
+            <p class="ntf-st" data-ntf-st aria-live="polite"></p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout" style="margin:18px 0"><svg aria-hidden="true"><use href="#i-info"/></svg><p data-i18n="n.tip">Кеңеш: чоң жаңылык (мисалы, АКШнын пайыздык чени же инфляция) чыкканда баа бир нече мүнөттө кескин өзгөрүшү мүмкүн. Мындай учурда жаңы баштагандарга соода кылбай, күтүп туруу коопсузураак.</p></div>
 
       <section class="lesson" id="ai-post" data-ai-post="full" style="margin-bottom:18px"></section>
 
-      <div class="grid grid-2" style="align-items:start">
-        <section class="panel">
+      <!-- Күндүн негизги фактылары + дүйнөлүк экономикалык анонстор (Forex Factory, KG/RU) -->
+      <div class="grid grid-2 nk-grid">
+        <section class="panel nkey" id="key" aria-labelledby="key-h">
           <div class="panel-head">
-            <h2 data-i18n="n.feed">Башкы жаңылыктар</h2>
-            <div class="seg" data-news-tabs>
-              <button type="button" data-feed="all" data-i18n="n.t_all">Баары</button>
-              <button type="button" data-feed="crypto" data-i18n="tab.crypto">Крипто</button>
-              <button type="button" data-feed="forex" data-i18n="tab.fx">Валюталар</button>
-              <button type="button" data-feed="stock" data-i18n="tab.stocks">Акциялар</button>
+            <h2 id="key-h" data-i18n="n.key_h">Күндүн негизги фактылары</h2>
+            <small data-i18n="n.key_sub">эң көп басылма жазган жана маанилүү окуялар</small>
+          </div>
+          <ol class="nk-list" data-nkey><li class="nf-empty" data-i18n="n.loading">Жүктөлүүдө…</li></ol>
+          <a class="nk-cal" href="#calendar" data-nkey-cal hidden></a>
+        </section>
+        <section class="panel ncal" id="calendar" aria-labelledby="cal-h">
+          <div class="panel-head">
+            <h2 id="cal-h" data-i18n="n.cal_h">Дүйнөлүк экономикалык анонстор</h2>
+            <div class="seg" data-cal-tabs>
+              <button type="button" data-cal-tab="today" data-i18n="n.cal_today">Бүгүн</button>
+              <button type="button" data-cal-tab="tomorrow" data-i18n="n.cal_tom">Эртең</button>
+              <button type="button" data-cal-tab="week" data-i18n="n.cal_week">Апта</button>
             </div>
           </div>
-          <div class="news-box" data-tv-news></div>
+          <label class="cal-only"><input type="checkbox" data-cal-imp> <span data-i18n="n.cal_imp">Маанилүүлөрү гана (●●●)</span></label>
+          <div class="cal-list" data-cal aria-live="polite"><p class="nf-empty" data-i18n="n.loading">Жүктөлүүдө…</p></div>
+          <p class="nf-foot" data-cal-foot></p>
+        </section>
+      </div>
+
+      <!-- Башкы жаңылыктар (кыргызча / орусча) -->
+      <section class="panel nfeed" id="feed" aria-labelledby="feed-h">
+        <div class="panel-head">
+          <div class="nf-title">
+            <h2 id="feed-h" data-i18n="n.feed">Башкы жаңылыктар</h2>
+            <span class="author-tag"><img src="assets/img/author-avatar.webp" width="28" height="28" alt=""><span><b>TRADER KG</b> <span data-i18n="n.picked">тандоосу</span></span></span>
+          </div>
+          <div class="seg" data-news-tabs>
+            <button type="button" data-feed="all" data-i18n="n.t_all">Баары</button>
+            <button type="button" data-feed="crypto" data-i18n="tab.crypto">Крипто</button>
+            <button type="button" data-feed="fx" data-i18n="n.t_fx">Валюта, алтын</button>
+            <button type="button" data-feed="stock" data-i18n="tab.stocks">Акциялар</button>
+          </div>
+        </div>
+        <div class="nf-topics" data-nf-topics>
+          <button type="button" data-tp="all" data-i18n="n.tp_all">Бардык темалар</button>
+          <button type="button" data-tp="move" data-i18n="n.tp_move">Рынок кыймылы</button>
+          <button type="button" data-tp="etf">ETF</button>
+          <button type="button" data-tp="reg" data-i18n="n.tp_reg">Жөнгө салуу</button>
+          <button type="button" data-tp="tech" data-i18n="n.tp_tech">Технология</button>
+          <button type="button" data-tp="macro" data-i18n="n.tp_macro">Макроэкономика</button>
+        </div>
+        <div class="nf-list" data-nf="main" aria-live="polite"><p class="nf-empty" data-i18n="n.loading">Жүктөлүүдө…</p></div>
+        <div class="nf-more-row"><button type="button" class="btn btn-ghost btn-sm" data-nf-more hidden><span data-i18n="n.more">Дагы көрсөтүү</span></button></div>
+        <p class="nf-foot" data-nf-foot></p>
+      </section>
+
+      <div class="grid grid-2 nf-grid">
+        <!-- Белгилүү адамдар жана алардын твиттери -->
+        <section class="panel" id="tweets" aria-labelledby="tw-h">
+          <div class="panel-head"><h2 id="tw-h" data-i18n="n.tw_h">Белгилүү адамдар жана алардын твиттери</h2></div>
+          <div class="nf-list" data-tweets><p class="nf-empty" data-i18n="n.loading">Жүктөлүүдө…</p></div>
+          <div class="tw-follow">
+            <p data-i18n="n.tw_follow">Кимдерди көзөмөлдөйбүз (X / Twitter):</p>
+            <div class="tw-acc" data-tw-acc></div>
+          </div>
+        </section>
+
+        <!-- Атактуулар жана инвесторлор: пикирлер -->
+        <section class="panel" id="opinions" aria-labelledby="op-h">
+          <div class="panel-head"><h2 id="op-h" data-i18n="n.op_h">Атактуулар жана инвесторлор: пикирлер</h2></div>
+          <div class="nf-list" data-nf="opinions"><p class="nf-empty" data-i18n="n.loading">Жүктөлүүдө…</p></div>
+          <p class="nf-foot" data-i18n="n.op_note">Бул — алардын жеке пикири, сунуш же кепилдик эмес. Ар бир пикир — белгилүү басылманын макаласынан, шилтемеси менен.</p>
+        </section>
+      </div>
+
+      <!-- Техникалык анализ -->
+      <section class="panel" id="ta" aria-labelledby="ta-h">
+        <div class="panel-head">
+          <h2 id="ta-h" data-i18n="n.ta_h">Техникалык анализ</h2>
+          <div class="seg" data-ta-tabs>
+            <button type="button" data-ta="BINANCE:BTCUSDT">BTC</button>
+            <button type="button" data-ta="BINANCE:ETHUSDT">ETH</button>
+            <button type="button" data-ta="FX:EURUSD">EUR/USD</button>
+            <button type="button" data-ta="OANDA:XAUUSD" data-i18n="n.gold">Алтын</button>
+            <button type="button" data-ta="FOREXCOM:SPXUSD">S&amp;P 500</button>
+          </div>
+        </div>
+        <div class="ta-grid">
+          <div class="ta-gauge">
+            <p class="ta-cap" data-i18n="n.ta_gauge">TradingView'дун индикаторлору (осцилляторлор жана жылма орточолор) азыр эмнени көрсөтүп жатат:</p>
+            <div class="ta-box" data-ta-widget></div>
+          </div>
+          <div>
+            <p class="ta-cap" data-i18n="n.ta_ideas">Трейдерлердин талдоолору — TradingView жана FXStreet (түп нускасына шилтеме менен):</p>
+            <div class="nf-list ta-list" data-nf="ta"><p class="nf-empty" data-i18n="n.loading">Жүктөлүүдө…</p></div>
+          </div>
+        </div>
+        <p class="nf-foot" data-i18n="n.ta_note">Техникалык анализ — авторлордун пикири жана индикаторлордун эсеби, сигнал же кепилдик эмес. Соода кылуудан мурун демо-эсепте текшериңиз.</p>
+      </section>
+
+      <div class="grid grid-2" style="align-items:start;margin-top:24px">
+        <section class="panel">
+          <div class="panel-head">
+            <h2 data-i18n="n.cal_tv_h">TradingView: календарь (чыккан маанилер менен)</h2>
+          </div>
+          <p class="clock" style="padding:12px 16px 0;margin:0" data-i18n="n.cal_hint2">Окуя чыккандан кийин анын чыныгы маанисин (факт) ушул жерден көрүңүз. Убакыт — сиздин түзмөгүңүздүн убактысы.</p>
+          <div class="news-box" data-tv-events></div>
         </section>
 
         <section class="panel">
           <div class="panel-head">
-            <h2 data-i18n="p.calendar">Экономикалык календарь</h2>
+            <h2 data-i18n="n.tv_h">TradingView: жандуу лента (орусча)</h2>
           </div>
-          <p class="clock" style="padding:12px 16px 0;margin:0" data-i18n="n.cal_hint">Маанилүү окуялар: пайыздык чендер, инфляция, жумушсуздук. Убакыт — сиздин түзмөгүңүздүн убактысы.</p>
-          <div class="news-box" data-tv-events></div>
+          <div class="news-box" data-tv-news></div>
         </section>
       </div>
 

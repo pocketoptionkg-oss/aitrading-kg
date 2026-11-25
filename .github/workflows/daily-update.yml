@@ -35,6 +35,18 @@ jobs:
       - name: BingX маалыматы
         run: python tools/update_bingx.py
 
+      - name: Жаңылыктар (RSS → news.json; кыргызча котормо — ANTHROPIC_API_KEY болсо гана)
+        continue-on-error: true   # булактар иштебей калса да маалыматтын калганы сакталат
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python tools/news_feed.py
+
+      - name: Экономикалык календарь (Forex Factory → calendar.json, KG/RU)
+        continue-on-error: true
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python tools/econ_calendar.py
+
       - name: ИИ-обзор
         if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 1 * * *'
         env:

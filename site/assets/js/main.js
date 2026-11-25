@@ -853,6 +853,16 @@
     initChartLinks();
     initAccessGate();
     initPanels();
+    initAlerts();
+  }
+
+  /* «⚠️ Шашылыш» плашкасы жана билдирмелер (assets/js/alerts.js) — бардык беттерде */
+  function initAlerts() {
+    if (window.ATAlerts || document.querySelector('script[src$="alerts.js"]')) return;
+    var s = document.createElement("script");
+    s.src = "assets/js/alerts.js";
+    s.async = true;
+    document.body.appendChild(s);
   }
 
 

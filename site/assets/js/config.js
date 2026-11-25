@@ -35,6 +35,33 @@ window.AITRADING_CONFIG = {
      ал прокси-сервердин сырларында сакталат. Бош болсо: Kraken/Binance ачык маалыматы колдонулат. */
   BINODEX_API: "",
 
+  /* «⚠️ ШАШЫЛЫШ» ПЛАШКАСЫ / ПЛАШКА «СРОЧНО» (бардык беттердин үстүндө, ботто жана тиркемеде да).
+     Эреже: себеттеги монеталардын 24 сааттык же 1 сааттык өзгөрүүсүнүн МЕДИАНАСЫ (Binance, запасы BingX).
+     |медиана 24 с| ≥ move24 % же |медиана 1 с| ≥ move1h % болсо — плашка жана билдирме.
+     Правило: медиана изменения монет корзины за 24 ч или за 1 ч (Binance, запасной — BingX).
+     Сайт (assets/js/alerts.js) жана бот (tools/market_pulse.py) ушул жерден окушат. */
+  ALERTS: {
+    basket: ["BTC", "ETH", "XRP", "BNB", "SOL", "DOGE", "TRX", "ADA", "LINK", "AVAX"],
+    move24: 5,
+    move1h: 3
+  },
+
+  /* БЕЛГИЛҮҮ АДАМДАР (X / Twitter) — «Жаңылыктар» бетинде «кимдерди көзөмөлдөйбүз» тизмеси.
+     Твиттин өзүн бот аркылуу жарыялайсыз: ADMIN PANEL → 🐦 Твит (алгач Telegram-каналга, анан сайтка).
+     Известные люди в X: список «за кем следим». Сам твит публикуется через бота (сначала канал, потом сайт). */
+  FAMOUS_X: [
+    { handle: "elonmusk", name: "Илон Маск" },
+    { handle: "realDonaldTrump", name: "Дональд Трамп" },
+    { handle: "saylor", name: "Майкл Сэйлор" },
+    { handle: "CathieDWood", name: "Кэти Вуд" },
+    { handle: "RayDalio", name: "Рэй Далио" },
+    { handle: "federalreserve", name: "ФРС США" },
+    { handle: "cz_binance", name: "Чанпэн Чжао (CZ)" },
+    { handle: "VitalikButerin", name: "Виталик Бутерин" },
+    { handle: "BillAckman", name: "Билл Экман" },
+    { handle: "PeterSchiff", name: "Питер Шифф" }
+  ],
+
   /* Сайттын дареги / адрес сайта */
   SITE_URL: "https://aitrading.kg",
 
