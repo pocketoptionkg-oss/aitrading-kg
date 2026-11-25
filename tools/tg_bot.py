@@ -616,6 +616,15 @@ def site_access_url(tg_id, path="/forecast.html"):
     return "%s%s#acc=%s.%s.%s" % (S.SITE_URL, path, tg36, exp36, link_sig("acc|%s|%s" % (tg36, exp36), 22))
 
 
+MIN_DEP_BD = os.environ.get("TG_MIN_DEP_BINODEX", "20")          # BinoDex: минималдуу толуктоо, $
+DEP_TX = {
+    "kg": "💳 <b>Сигналдар толуктоодон кийин ачылат.</b>\nBinoDex эсебиңизди <b>кеминде ${m}</b> толуктаңыз.\n\n"
+          "Толуктагандан кийин:\n🔐 «BinoDex аркылуу текшерүү» — бот өзү текшерет (скриншотсуз)\n📷 же толуктоонун скриншотун жөнөтүңүз.",
+    "ru": "💳 <b>Сигналы открываются после пополнения.</b>\nПополните счёт BinoDex <b>минимум на ${m}</b>.\n\n"
+          "После пополнения:\n🔐 «Проверить через BinoDex» — бот проверит сам (без скриншота)\n📷 или пришлите скриншот пополнения.",
+}
+
+
 def app_url(u, admin=False):
     """Mini App шилтемеси: доступу барларга ?acc=<кол коюлган токен> (сайттагы access.js текшерет)."""
     base = S.SITE_URL + "/forecast.html"
@@ -903,6 +912,10 @@ class App:
             return self.adm_find(u, text.split(" ", 1)[1] if " " in text else "")
         if act:
             return self.open(u, act)
+        b = u.get("broker") if u.get("broker") in ("bingx", "binodex") else self.db.kv("regb:%d" % uid)
+        if b in ("bingx", "binodex") and u.get("status") != "active" and re.match(r"^\s*\d{5,15}\s*$", text or ""):
+            u = self.db.upd(uid, step="id:" + b)             # «Отправить ID» баспай эле ID жазды
+            return self.on_step(u, m, text)
         return self.send(uid, T(u, "menu_hint"), self.menu_kb(u))
 
     def open(self, u, act, mid=None):
@@ -1042,6 +1055,17 @@ class App:
         self.db.upd(uid, status="pending", step="proof")
         return self.send(uid, T(u, "ask_proof"), ik([[(T(u, "btn_skip"), "skipproof")]]))
 
+    def need_deposit(self, u):
+        uid = u["id"]
+        u = self.db.upd(uid, status="wait_dep", step=None)
+        rows = []
+        if oauth_ready():
+            rows.append([(T(u, "btn_oauth"), oauth_url(uid))])
+        rows.append([(T(u, "btn_proof"), "proofbd")])
+        if self.refs.get("binodex"):
+            rows.append([("💳 Пополнить BinoDex" if u.get("lang") == "ru" else "💳 BinoDex толуктоо", self.refs.get("binodex"))])
+        return self.send(uid, DEP_TX.get(u.get("lang") or "kg", DEP_TX["kg"]).replace("{m}", MIN_DEP_BD), ik(rows))
+
     def to_review(self, u, proof_mid):
         uid = u["id"]
         self.db.upd(uid, status="pending", step=None)
@@ -1152,6 +1176,7 @@ class App:
         if data == "chinv":
             return self.send_invite(u)
         if data.startswith("reg:"):
+            self.db.kv_set("regb:%d" % uid, data[4:])
             return self.show_broker(u, data[4:])
         if data.startswith("sendid:"):
             b = data[7:]
@@ -1175,9 +1200,11 @@ class App:
                 return self.activate(u, "кайра кирди")
             return self.verify(u)
         if data == "skipproof":
-            if u.get("step") == "proof":
-                return self.to_review(u, None)
-            return None
+            if u.get("step") != "proof":
+                return None
+            if u.get("broker") == "binodex":
+                return self.need_deposit(u)
+            return self.to_review(u, None)
         if data.startswith("learn:"):
             i = int(data[6:])
             key, anchor = LESSON_KEYS[i]
