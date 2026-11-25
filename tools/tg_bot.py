@@ -584,6 +584,11 @@ def oauth_ready():
     return bool((os.environ.get("BINODEX_CLIENT_ID") or "").strip() and link_secret())
 
 
+def binodex_status():
+    """BinoDex: кирүү OAuth аркылуу (сайт + бот бир LINK_SECRET), котировкалар — Kraken/Binance (BinoDex'те котировка API жок)."""
+    return "✓ OAuth (вход через BinoDex)" if oauth_ready() else "❌ OAuth не настроен (BINODEX_CLIENT_ID / LINK_SECRET)"
+
+
 def link_sig(msg, n):
     raw = hmac.new(link_secret().encode(), msg.encode(), hashlib.sha256).digest()
     return base64.urlsafe_b64encode(raw).decode().rstrip("=")[:n]
@@ -1160,9 +1165,9 @@ class App:
         pend = c.get("pending", 0)
         paused = self.db.kv("signals_paused")
         text = ("🛠 <b>ADMIN PANEL</b>\n👥 Колдонуучулар: <b>%d</b> · ✅ активдүү %d · ⏳ заявка %d · 💳 толуктоо күтүүдө %d · ⛔ токтотулган %d\n"
-                "BingX API: %s · BinoDex API: жок (кол менен) · Сигналдар: %s") % (
+                "BingX API: %s · BinoDex: %s · Сигналдар: %s") % (
             sum(c.values()), c.get("active", 0), pend, c.get("wait_dep", 0), c.get("suspended", 0),
-            "✓" if self.bingx.ok() else "ачкыч жок (кол менен)", "⏸ токтотулган" if paused else ("▶️ иштеп жатат" if self.engine else "өчүк (--no-signals)"))
+            "✓" if self.bingx.ok() else "ачкыч жок (кол менен)", binodex_status(), "⏸ токтотулган" if paused else ("▶️ иштеп жатат" if self.engine else "өчүк (--no-signals)"))
         kb = ik([[("📣 Рассылка", "adm:bc"), ("🧾 Заявкалар (%d)" % pend, "adm:queue")],
                  [("👥 Трейдерлер", "adm:users"), ("📊 Статистика", "adm:stats")],
                  [("▶️ Сигналдарды улантуу" if paused else "⏸ Сигналдарды токтотуу", "adm:sig")]])
@@ -1749,8 +1754,8 @@ class App:
         self.username = me.get("username")
         self.api("deleteWebhook", {"drop_pending_updates": False})
         self.set_commands()
-        print("AITRADING.KG бот: @%s · админдер: %d · BingX API: %s · BinoDex API: жок (админ ✅/❌) · сигналдар: %s · база: %s" % (
-            self.username, len(self.admins), "✓" if self.bingx.ok() else "жок", "✓ BinoDex %s мүн + BingX" % ",".join(map(str, self.exp)) if self.engine else "өчүк", DB_PATH))
+        print("AITRADING.KG бот: @%s · админдер: %d · BingX API: %s · BinoDex: %s · сигналдар: %s · база: %s" % (
+            self.username, len(self.admins), "✓" if self.bingx.ok() else "жок", binodex_status(), "✓ BinoDex %s мүн + BingX" % ",".join(map(str, self.exp)) if self.engine else "өчүк", DB_PATH))
         if not self.admins:
             print("! Админ жок: TELEGRAM_CHAT_ID же TELEGRAM_ADMIN_IDS'ке өзүңүздүн Telegram ID'ңизди коюңуз (Телеграм_бот_туташтыруу.bat).")
         if S.keep_awake(True):
