@@ -58,7 +58,7 @@ POP = ["BTC", "ETH", "SOL", "XRP", "BNB", "DOGE", "TON", "ADA", "AVAX", "LINK", 
 
 ANTISPAM_ANY = 3 * 60000      # 3 мүнөттө 1 билдирмеден көп эмес
 ANTISPAM_SAME = 15 * 60000    # ошол эле сунуш — 15 мүнөттө 1 жолу
-SESSIONS = os.environ.get("TG_SESSIONS", "08:00-11:00,19:00-22:00")   # BinoDex соода сессиялары (Бишкек); бош — күнү-түнү
+SESSIONS = os.environ.get("TG_SESSIONS", "08:00-11:00,19:00-close")   # BinoDex соода сессиялары (Бишкек); close — рынок жабылганда; бош — күнү-түнү
 
 T = {
     "kg": {
@@ -764,6 +764,21 @@ def key_of(sg):
     return "%s:%d:%s" % (sg["base"], sg["dir"], sg["exp"] if sg["mkt"] == "binodex" else "1h")
 
 
+def market_close_after(ta):
+    """Форекс күнүнүн жабылышы: Нью-Йорк 17:00 (кышында Бишкек 04:00, жайында 03:00)."""
+    try:
+        from zoneinfo import ZoneInfo
+        ny = ZoneInfo("America/New_York")
+        t = ta.astimezone(ny)
+        c = t.replace(hour=17, minute=0, second=0, microsecond=0)
+        if c <= t:
+            c += timedelta(days=1)
+        return c.astimezone(BISHKEK)
+    except Exception:  # noqa: BLE001 — tzdata жок болсо
+        c = ta.replace(hour=4, minute=0, second=0, microsecond=0)
+        return c if c > ta else c + timedelta(days=1)
+
+
 def sessions_today(ms):
     """[(n, башы_ms, аягы_ms)] — Бишкек убактысы боюнча ошол күндүн сессиялары."""
     day = datetime.fromtimestamp(ms / 1000, BISHKEK).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -772,7 +787,12 @@ def sessions_today(ms):
         try:
             a, b = [x.strip() for x in part.split("-")]
             ta = day + timedelta(hours=int(a[:2]), minutes=int(a[3:5]))
-            tb = day + timedelta(hours=int(b[:2]), minutes=int(b[3:5]))
+            if b.lower() == "close":
+                tb = market_close_after(ta)
+            else:
+                tb = day + timedelta(hours=int(b[:2]), minutes=int(b[3:5]))
+                if tb <= ta:
+                    tb += timedelta(days=1)               # түн ортосунан өтөт
             out.append((n, int(ta.timestamp() * 1000), int(tb.timestamp() * 1000)))
         except (ValueError, IndexError):
             continue
@@ -782,7 +802,7 @@ def sessions_today(ms):
 def session_at(ms):
     if not SESSIONS.strip():
         return (0, 0, 0)
-    for x in sessions_today(ms):
+    for x in sessions_today(ms - 86400000) + sessions_today(ms):
         if x[1] <= ms < x[2]:
             return x
     return None
