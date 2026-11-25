@@ -65,8 +65,13 @@ TX = {
 
 # ---------------------------------------------------------------- маалымат
 def klines(sym, iv, limit=500):
-    j = S.get_json("%s/v3/quote/klines?symbol=%s-USDT&interval=%s&limit=%d" % (API, sym, iv, limit), 12)
-    rows = j.get("data")
+    rows = None
+    for attempt in range(3):                       # BingX кээде бош жооп берет — кайра суроо
+        j = S.get_json("%s/v3/quote/klines?symbol=%s-USDT&interval=%s&limit=%d" % (API, sym, iv, limit), 12)
+        rows = j.get("data")
+        if isinstance(rows, list) and rows:
+            break
+        time.sleep(0.8 * (attempt + 1))
     if not isinstance(rows, list) or not rows:
         raise S.Fetch("nodata %s %s" % (sym, iv))
     out = [{"time": int(r["time"]) // 1000, "open": float(r["open"]), "high": float(r["high"]), "low": float(r["low"]),
@@ -115,6 +120,16 @@ def analyze(sym, hz):
     last = closes[-1]
     row = {"sym": sym, "hz": hz, "p": ml["p"], "acc": ml["acc"], "bl": ml["base"], "edge": edge, "dir": d, "price": last, "atr": a,
            "ema20": e20, "ema50": e50, "rsi": r, "why": ""}
+    if d == 0 and a:
+        # Тренд сигналы: модель тренддин өзүн «утпай» калганда (тренд күчтүү базар) — таза тренд + MACD + RSI ырастаса.
+        m = [x - y for x, y in zip(ema(closes, 12), ema(closes, 26))]
+        sg = ema(m, 9)
+        hist, hprev = m[-1] - sg[-1], m[-2] - sg[-2]
+        if last > e20 > e50 and hist > 0 and hist >= hprev and r is not None and 48 <= r <= 68 and ml["p"] >= 0.5:
+            d, row["kind"] = 1, "trend"
+        elif last < e20 < e50 and hist < 0 and hist <= hprev and r is not None and 32 <= r <= 52 and ml["p"] <= 0.5:
+            d, row["kind"] = -1, "trend"
+        row["dir"] = d
     if d == 0 or not a:
         row["why"] = "модель: сигнал жок"
         return row
@@ -154,7 +169,7 @@ def scan(hz, skip=()):
             rows.append({"sym": sym, "hz": hz, "dir": 0, "why": str(e)[:60]})
         time.sleep(0.15)
     good = [r for r in rows if r.get("dir")]
-    good.sort(key=lambda r: (-abs(r["p"] - 0.5), -r["edge"]))
+    good.sort(key=lambda r: (r.get("kind") == "trend", -abs(r["p"] - 0.5), -r["edge"]))   # адегенде модель сигналдары
     return good, rows
 
 
@@ -171,6 +186,7 @@ def msg_signal(tr, lang):
     lines = ["%s <b>%s</b>" % ("🟢" if up else "🔴", e(L["h_" + tr["hz"]])), S.LINE,
              ("💎 <b>%s</b> · %s" % (e(label(tr["sym"])), e(NAMES[tr["sym"]]))) if tr["sym"] in NAMES else "💎 <b>%s</b> · BingX" % e(label(tr["sym"])),
              "%s <b>%s</b> · %s <b>%s</b>" % ("📈" if up else "📉", e(L["long"] if up else L["short"]), e(L["prob"]), dp),
+             ] + (["📐 " + ("Трендовый вход: EMA20/50, MACD и RSI подтверждают направление" if lang == "ru" else "Тренд боюнча кирүү: EMA20/50, MACD жана RSI багытты ырастайт")] if tr.get("kind") == "trend" else []) + [
              "🎯 %s: <b>%s – %s</b>" % (e(L["zone"]), money(tr["zone"][0]), money(tr["zone"][1])),
              "🛑 %s: <b>%s</b>" % (e(L["sl"]), money(tr["sl"])),
              "✅ %s: <b>%s</b>" % (e(L["tp1"]), money(tr["tp1"])),
