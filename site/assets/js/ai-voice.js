@@ -112,6 +112,7 @@
     var lang = AT.lang() === "ru" ? "ru" : "ky";
     maxMs = maxMs || 2600;
     if ((manifest[lang] || []).indexOf(key) < 0 && cloud && cloudFails < 3) return say(phrase(key, lang), maxMs + 1500);
+    if ((manifest[lang] || []).length && (manifest[lang] || []).indexOf(key) < 0) return Promise.resolve();   // автордун үнү жок кадам — үнсүз (эски робот-үн жок)
     stop();
     return new Promise(function (resolve) {
       var done = false;
