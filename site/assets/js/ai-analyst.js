@@ -23,22 +23,8 @@
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   function sfx(n) { if (window.AIVOICE && AIVOICE.sfx) AIVOICE.sfx(n); }
 
-  /* Сигналды үн менен окуу: «Евро доллар, вверх, на 5 минут. Вероятность 62 процента.» */
-  var SAY_CUR = {
-    ru: { EUR: "евро", USD: "доллар", GBP: "фунт", JPY: "иена", CHF: "франк", CAD: "канадский доллар", AUD: "австралийский доллар", NZD: "новозеландский доллар", XAU: "золото", BTC: "биткоин", ETH: "эфир", SOL: "солана", XRP: "рипл", USDT: "тезер" },
-    ky: { EUR: "евро", USD: "доллар", GBP: "фунт", JPY: "иена", CHF: "франк", CAD: "канада доллары", AUD: "австралия доллары", NZD: "жаңы зеландия доллары", XAU: "алтын", BTC: "биткоин", ETH: "эфир", SOL: "солана", XRP: "рипл", USDT: "тезер" }
-  };
-  function sayName(name, lang) {
-    var m = SAY_CUR[lang] || SAY_CUR.ru;
-    return String(name || "").replace(/\s*OTC\s*/i, " ").split(/[\/\s]+/).filter(Boolean)
-      .map(function (w) { return m[w.toUpperCase()] || w; }).join(" ");
-  }
-  function sigSpeech(sg, p) {
-    var ru = AT.lang() === "ru", up = sg.dir > 0, pc = Math.round((up ? p : 1 - p) * 100), n = sayName(sg.name, ru ? "ru" : "ky");
-    return ru
-      ? "Сигнал. " + n + ". " + (up ? "Вверх" : "Вниз") + ", на " + sg.exp + " " + (sg.exp % 10 === 1 && sg.exp % 100 !== 11 ? "минуту" : sg.exp % 10 >= 2 && sg.exp % 10 <= 4 && (sg.exp % 100 < 12 || sg.exp % 100 > 14) ? "минуты" : "минут") + ". Вероятность " + pc + " " + (pc % 10 === 1 && pc % 100 !== 11 ? "процент" : pc % 10 >= 2 && pc % 10 <= 4 && (pc % 100 < 12 || pc % 100 > 14) ? "процента" : "процентов") + ". Это вероятность, а не гарантия."
-      : "Сигнал. " + n + ". " + (up ? "Өйдө" : "Ылдый") + ", " + sg.exp + " мүнөткө. Ыктымалдык " + pc + " пайыз. Бул кепилдик эмес.";
-  }
+  /* Үн — негизги учурларда гана (автордун кыска фразалары): калган кадамдар үнсүз */
+  var VOICE_KEYS = { hello: 1, load: 1, err: 1, sig_up: 1, sig_dn: 1, sig_none: 1, res_win: 1, res_loss: 1, locked: 1, done_up: 1, done_dn: 1, done_flat: 1 };
 
   function Analyst(root) {
     this.root = root;
@@ -230,10 +216,10 @@
     if (!window.AIVOICE || !AIVOICE.canSpeak()) this.el.sound.hidden = true;
   };
   Analyst.prototype.speakNow = function (key) {
-    if (!window.AIVOICE || !AIVOICE.isOn() || this.speed < 0.3) return Promise.resolve();
+    if (!window.AIVOICE || !AIVOICE.isOn() || this.speed < 0.3 || !VOICE_KEYS[key]) return Promise.resolve();
     var sp = this.spider;
     sp.talking = true;
-    var long = key === "hello" || key.indexOf("done") === 0;
+    var long = key !== "load" && key !== "res_win";
     return AIVOICE.speak(key, long ? 6000 : 2400).then(function () { sp.talking = false; });
   };
   Analyst.prototype.speak = function (key) { this._vp = this.speakNow(key); return this._vp; };
@@ -850,7 +836,7 @@
         self.el.result.hidden = false;
         sfx("done");
         self.say(T("aia.s_done"));
-        self.speak(pp >= 0.55 ? "done_up" : pp <= 0.45 ? "done_dn" : "done_flat");
+        if (!self.data || self.data.source !== "live") self.speak(pp >= 0.55 ? "done_up" : pp <= 0.45 ? "done_dn" : "done_flat");
         var rb = self.box(self.el.result);
         return sp.moveTo(rb.x + rb.w - 40, rb.y + 26).then(function () { sp.burst(10, 70); });
       });
@@ -875,6 +861,7 @@
     if (dir !== 0 && G && !G.consume(gid)) {
       clearInterval(this.sigTimer);
       this.auto = false;
+      if (!redraw) this.speakNow("locked");
       this.el.result.innerHTML =
         '<div class="sig-head"><span class="badge badge-mint">' + esc(T("aia.sig_title")) + '</span><span class="muted">' + esc(this.sig.name) + " · " + this.sig.exp + " " + esc(T("aia.min")) + "</span></div>" +
         G.lockHtml(true) + '<div class="aia-actions"><button type="button" class="btn btn-ghost btn-sm aia-again">↻ ' + esc(T("aia.sig_new")) + "</button></div>";
@@ -885,7 +872,7 @@
     if (!redraw) {
       if (dir !== 0) { var all = sigLoad(); all.push(this.sig); sigSave(all); }
       this.syncBest();
-      if (dir !== 0 && window.AIVOICE && AIVOICE.isOn() && AIVOICE.say) AIVOICE.say(sigSpeech(this.sig, p));
+      this.speakNow(dir > 0 ? "sig_up" : dir < 0 ? "sig_dn" : "sig_none");
       // Авто-режимде телефон чөнтөктө болсо — жаңы сигнал жөнүндө билдирме
       if (dir !== 0 && document.hidden && AT.notifyOn()) {
         AT.notify((dir > 0 ? "▲ " : "▼ ") + this.sig.name + " · " + this.exp + " " + T("aia.min") + " · " + pct(dir > 0 ? p : 1 - p),
@@ -977,6 +964,7 @@
         sigSave(all);
         AT.track("signal_result", { pair: sg.code, exp: sg.exp, res: sg.res });
         sfx(sg.res === 1 ? "done" : "blip");
+        if (sg.res === 1 || sg.res === 0) self.speakNow(sg.res === 1 ? "res_win" : "res_loss");
         if (AT.notifyOn()) {
           AT.notify((sg.res === 1 ? "✓ " : sg.res === 0 ? "✗ " : "= ") + sg.name + " · " + T(sg.res === 1 ? "ntf.win" : sg.res === 0 ? "ntf.loss" : "ntf.tie"),
             (sg.dir > 0 ? "▲ " : "▼ ") + money(sg.entry) + " → " + money(px) + " · " + sg.exp + " " + T("aia.min"),

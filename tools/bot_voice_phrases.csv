@@ -1,23 +1,13 @@
 ﻿key;file_ky;text_ky;file_ru;text_ru
-hello;site/assets/audio/ky/hello.mp3;Салам! Мен AITRADING ИИ-аналитигимин. Графикти чогуу талдайлы.;site/assets/audio/ru/hello.mp3;Привет! Я ИИ-аналитик AITRADING. Давайте разберём график вместе.
-load;site/assets/audio/ky/load.mp3;Графикти жүктөп жатам.;site/assets/audio/ru/load.mp3;Загружаю график.
-trend_up;site/assets/audio/ky/trend_up.mp3;Тренд өйдө.;site/assets/audio/ru/trend_up.mp3;Тренд вверх.
-trend_dn;site/assets/audio/ky/trend_dn.mp3;Тренд ылдый.;site/assets/audio/ru/trend_dn.mp3;Тренд вниз.
-trend_flat;site/assets/audio/ky/trend_flat.mp3;Тренд так эмес.;site/assets/audio/ru/trend_flat.mp3;Тренд неясен.
-rsi_low;site/assets/audio/ky/rsi_low.mp3;RSI ашыкча сатылган зонада.;site/assets/audio/ru/rsi_low.mp3;RSI в зоне перепроданности.
-rsi_high;site/assets/audio/ky/rsi_high.mp3;RSI ашыкча сатып алынган зонада.;site/assets/audio/ru/rsi_high.mp3;RSI в зоне перекупленности.
-rsi_mid;site/assets/audio/ky/rsi_mid.mp3;RSI нейтралдуу.;site/assets/audio/ru/rsi_mid.mp3;RSI нейтральный.
-macd_up;site/assets/audio/ky/macd_up.mp3;MACD импульсу өйдө.;site/assets/audio/ru/macd_up.mp3;Импульс MACD вверх.
-macd_dn;site/assets/audio/ky/macd_dn.mp3;MACD импульсу ылдый.;site/assets/audio/ru/macd_dn.mp3;Импульс MACD вниз.
-macd_mix;site/assets/audio/ky/macd_mix.mp3;MACD импульсу басаңдап жатат.;site/assets/audio/ru/macd_mix.mp3;Импульс MACD ослабевает.
-bb_lo;site/assets/audio/ky/bb_lo.mp3;Баа төмөнкү тилкеге жакын.;site/assets/audio/ru/bb_lo.mp3;Цена у нижней полосы.
-bb_hi;site/assets/audio/ky/bb_hi.mp3;Баа жогорку тилкеге жакын.;site/assets/audio/ru/bb_hi.mp3;Цена у верхней полосы.
-bb_mid;site/assets/audio/ky/bb_mid.mp3;Баа диапазондун ортосунда.;site/assets/audio/ru/bb_mid.mp3;Цена в середине диапазона.
-levels;site/assets/audio/ky/levels.mp3;Колдоо жана каршылык деңгээлдерин белгиледим.;site/assets/audio/ru/levels.mp3;Отметил уровни поддержки и сопротивления.
-vol_up;site/assets/audio/ky/vol_up.mp3;Көлөм орточодон жогору.;site/assets/audio/ru/vol_up.mp3;Объём выше среднего.
-vol_dn;site/assets/audio/ky/vol_dn.mp3;Көлөм орточодон төмөн.;site/assets/audio/ru/vol_dn.mp3;Объём ниже среднего.
-ml;site/assets/audio/ky/ml.mp3;Эми ИИ-модель эсептейт.;site/assets/audio/ru/ml.mp3;Теперь считает ИИ-модель.
-done_up;site/assets/audio/ky/done_up.mp3;Прогноз даяр: өсүү ыктымалдыгы бир аз жогору. Бирок бул кепилдик эмес.;site/assets/audio/ru/done_up.mp3;Прогноз готов: вероятность роста немного выше. Но это не гарантия.
-done_dn;site/assets/audio/ky/done_dn.mp3;Прогноз даяр: түшүү ыктымалдыгы бир аз жогору. Бирок бул кепилдик эмес.;site/assets/audio/ru/done_dn.mp3;Прогноз готов: вероятность падения немного выше. Но это не гарантия.
-done_flat;site/assets/audio/ky/done_flat.mp3;Прогноз даяр: азыр так багыт жок, элүүгө элүү. Шашпаңыз.;site/assets/audio/ru/done_flat.mp3;Прогноз готов: сейчас чёткого направления нет, пятьдесят на пятьдесят. Не спешите.
-err;site/assets/audio/ky/err.mp3;Маалымат жүктөлгөн жок.;site/assets/audio/ru/err.mp3;Данные не загрузились.
+hello;site/assets/audio/ky/hello.mp3;Салам! Мен сиз үчүн сигнал издейм. Графикти өзүм текшерем — бир аз күтө туруңуз.;site/assets/audio/ru/hello.mp3;Привет! Я ищу для вас сигнал. График проверю сам — подождите немного.
+load;site/assets/audio/ky/load.mp3;Текшерип жатам.;site/assets/audio/ru/load.mp3;Проверяю.
+sig_up;site/assets/audio/ky/sig_up.mp3;Сигнал бар: өйдө! Убакытты экрандан караңыз. Аз сумма менен кириңиз.;site/assets/audio/ru/sig_up.mp3;Есть сигнал: вверх! Время — на экране. Входите небольшой суммой.
+sig_dn;site/assets/audio/ky/sig_dn.mp3;Сигнал бар: ылдый! Убакытты экрандан караңыз. Аз сумма менен кириңиз.;site/assets/audio/ru/sig_dn.mp3;Есть сигнал: вниз! Время — на экране. Входите небольшой суммой.
+sig_none;site/assets/audio/ky/sig_none.mp3;Азыр так сигнал жок. Шашпаңыз — бир аздан кийин кайра текшерем.;site/assets/audio/ru/sig_none.mp3;Сейчас чёткого сигнала нет. Не спешите — чуть позже проверю ещё раз.
+res_win;site/assets/audio/ky/res_win.mp3;Плюс! Сигнал иштеди.;site/assets/audio/ru/res_win.mp3;Плюс! Сигнал сработал.
+res_loss;site/assets/audio/ky/res_loss.mp3;Бул жолу минус. Тынч болуңуз — кийинки сигналды күтөбүз.;site/assets/audio/ru/res_loss.mp3;В этот раз минус. Спокойно — ждём следующий сигнал.
+locked;site/assets/audio/ky/locked.mp3;Акысыз сигналдар бүттү. Катталып, эсепти толуктасаңыз — баары ачылат.;site/assets/audio/ru/locked.mp3;Бесплатные сигналы закончились. Зарегистрируйтесь и пополните счёт — откроется всё.
+done_up;site/assets/audio/ky/done_up.mp3;Анализ даяр: өсүү ыктымалдыгы жогору. Бул кепилдик эмес.;site/assets/audio/ru/done_up.mp3;Анализ готов: рост вероятнее. Это не гарантия.
+done_dn;site/assets/audio/ky/done_dn.mp3;Анализ даяр: түшүү ыктымалдыгы жогору. Бул кепилдик эмес.;site/assets/audio/ru/done_dn.mp3;Анализ готов: падение вероятнее. Это не гарантия.
+done_flat;site/assets/audio/ky/done_flat.mp3;Анализ даяр: азыр так багыт жок.;site/assets/audio/ru/done_flat.mp3;Анализ готов: чёткого направления нет.
+err;site/assets/audio/ky/err.mp3;Маалымат жүктөлбөй калды. Кайра басып көрүңүз.;site/assets/audio/ru/err.mp3;Данные не загрузились. Нажмите ещё раз.

@@ -93,6 +93,19 @@
     });
   }
 
+  /* Эки стиль (A — сабырдуу, B — шайыр): ар бир фраза аралаш алмашат — A,A,B,A,B,B,A,A,A,B…
+     ошондо бир эле сөз улам кайталанбайт. Эсептегич localStorage'да (жок болсо — эс тутумда). */
+  var MIX = [0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1];
+  var mixN = {};
+  try { mixN = JSON.parse(localStorage.getItem("aitrading-voice-mix") || "{}") || {}; } catch (e) { mixN = {}; }
+  function variant(key, lang) {
+    if ((manifest[lang] || []).indexOf(key + "_b") < 0) return key;
+    var i = mixN[key] || 0;
+    mixN[key] = i + 1;
+    try { localStorage.setItem("aitrading-voice-mix", JSON.stringify(mixN)); } catch (e) { /* */ }
+    return MIX[i % MIX.length] ? key + "_b" : key;
+  }
+
   /* key → Promise (сүйлөп бүткөндө же max мс өткөндө чечилет) */
   function speak(key, maxMs) {
     if (!enabled || !unlocked) return Promise.resolve();
@@ -105,8 +118,8 @@
       var finish = function () { if (!done) { done = true; resolve(); } };
       setTimeout(finish, maxMs);
       if ((manifest[lang] || []).indexOf(key) >= 0) {
-        audio = new Audio("assets/audio/" + lang + "/" + key + ".mp3");
-        audio.playbackRate = 1.2;
+        audio = new Audio("assets/audio/" + lang + "/" + variant(key, lang) + ".mp3");
+        audio.playbackRate = 1.05;
         audio.preservesPitch = true;
         sfx("pre");
         audio.onended = finish;

@@ -1,1 +1,1 @@
-{"ky": [], "ru": []}
+{"ky": ["done_dn", "done_dn_b", "done_flat", "done_flat_b", "done_up", "done_up_b", "err", "err_b", "hello", "hello_b", "load", "load_b", "locked", "locked_b", "res_loss", "res_loss_b", "res_win", "res_win_b", "sig_dn", "sig_dn_b", "sig_none", "sig_none_b", "sig_up", "sig_up_b"], "ru": ["done_dn", "done_dn_b", "done_flat", "done_flat_b", "done_up", "done_up_b", "err", "err_b", "hello", "hello_b", "load", "load_b", "locked", "locked_b", "res_loss", "res_loss_b", "res_win", "res_win_b", "sig_dn", "sig_dn_b", "sig_none", "sig_none_b", "sig_up", "sig_up_b"]}
