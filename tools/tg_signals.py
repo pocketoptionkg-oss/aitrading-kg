@@ -58,6 +58,8 @@ POP = ["BTC", "ETH", "SOL", "XRP", "BNB", "DOGE", "TON", "ADA", "AVAX", "LINK", 
 
 ANTISPAM_ANY = 3 * 60000      # 3 мүнөттө 1 билдирмеден көп эмес
 ANTISPAM_SAME = 15 * 60000    # ошол эле сунуш — 15 мүнөттө 1 жолу
+LOSS_STREAK = int(os.environ.get("TG_LOSS_STREAK", "3"))   # ушунча минус катары менен болсо — тыныгуу
+COOL_MS = int(os.environ.get("TG_COOL_MIN", "3")) * 60000
 SESSIONS = os.environ.get("TG_SESSIONS", "08:00-11:00,19:00-close")   # BinoDex соода сессиялары (Бишкек); close — рынок жабылганда; бош — күнү-түнү
 
 T = {
@@ -76,8 +78,9 @@ T = {
         "dg_head": "🔁 ПЕРЕКРЫТИЕ (догон) · 2-кирүү",
         "dg_note": "Мурунку сигнал минус болду. Ушул эле багытта экинчи кирүү — сумма 2 эседен ашпасын. Догон тобокелди көбөйтөт: жоготууга даяр болбосоңуз, кирбеңиз.",
         "dg_res": "перекрытие",
+        "ta_w": "Тех. анализ", "ta_names": {"trend": "тренд", "rsi": "RSI", "macd": "MACD", "levels": "деңгээлдер"},
         "ss_open": "СООДА СЕССИЯСЫ №{n} БАШТАЛДЫ", "ss_close": "СООДА СЕССИЯСЫНЫН ЖЫЙЫНТЫГЫ №{n}",
-        "ss_l1": "BinoDex сигналдары: {exp} мүн (негизги — 5 мүн)", "ss_l2": "Минустан кийин — бир перекрытие (догон) сигналы",
+        "ss_l1": "BinoDex сигналдары: {exp} мүн, тех. анализ ырастаганда гана", "ss_l2": "Минустан кийин — 2–3 мүн перекрытие; 3 минус катары болсо — 3 мүн тыныгуу",
         "ss_l3": "Сигнал боюнча гана кириңиз, сумма — депозиттин 1–2%",
         "ss_none": "Бул сессияда сигнал болгон жок: рынок модельдин эрежесине туура келген жок.",
         "ss_sum": "Плюс: {w} · Минус: {l} · Нөл: {t}", "ss_acc": "Сессиянын тактыгы: {pc}% ({n} сигнал)",
@@ -109,8 +112,9 @@ T = {
         "dg_head": "🔁 ПЕРЕКРЫТИЕ (догон) · вход №2",
         "dg_note": "Прошлый сигнал ушёл в минус. Второй вход в ту же сторону — сумма не больше 2× от первой. Догон увеличивает риск: не входите, если не готовы потерять эту сумму.",
         "dg_res": "перекрытие",
+        "ta_w": "Тех. анализ", "ta_names": {"trend": "тренд", "rsi": "RSI", "macd": "MACD", "levels": "уровни"},
         "ss_open": "ТОРГОВАЯ СЕССИЯ №{n} НАЧАЛАСЬ", "ss_close": "ИТОГ ТОРГОВОЙ СЕССИИ №{n}",
-        "ss_l1": "Сигналы BinoDex: {exp} мин (основные — 5 мин)", "ss_l2": "После минуса — один сигнал-перекрытие (догон)",
+        "ss_l1": "Сигналы BinoDex: {exp} мин, только с подтверждением тех. анализа", "ss_l2": "После минуса — перекрытие на 2–3 мин; после 3 минусов подряд — пауза 3 мин",
         "ss_l3": "Входите только по сигналу, сумма — 1–2% депозита",
         "ss_none": "В этой сессии сигналов не было: рынок не дал условий по правилам модели.",
         "ss_sum": "Плюс: {w} · Минус: {l} · Ноль: {t}", "ss_acc": "Точность сессии: {pc}% ({n} сигналов)",
@@ -205,6 +209,50 @@ def rsi(c, n=14):
         l = (l * (n - 1) + max(-dd, 0)) / n
         out[t] = 100.0 if l == 0 else 100 - 100 / (1 + g / l)
     return out
+
+
+def ema_list(a, n):
+    out, k, e = [], 2.0 / (n + 1), None
+    for v in a:
+        e = v if e is None else v * k + e * (1 - k)
+        out.append(e)
+    return out
+
+
+TA_MIN = int(os.environ.get("TG_TA_MIN", "3"))     # 4 текшерүүнүн канчасы багытты ырасташы керек
+
+
+def ta_check(cs, d):
+    """Техникалык ырастоо (d: +1 өйдө / -1 ылдый). Кайтарат: (упай 0–4, себептер).
+    1) Тренд: EMA20 vs EMA50 жана EMA20'нун жантаюусу. 2) RSI14: багытка ылайык зона, ашыкча эмес.
+    3) MACD гистограммасы: белгиси жана өсүшү багытта. 4) Деңгээлдер: акыркы 30 шамдын диапазонунда баанын жайгашуусу —
+       өйдө үчүн каршылыкка жабышпаган (≤0.65), ылдый үчүн колдоого жабышпаган (≥0.35)."""
+    C = [c["close"] for c in cs]
+    if len(C) < 60 or not d:
+        return 0, []
+    e20, e50 = ema_list(C, 20), ema_list(C, 50)
+    why, sc = [], 0
+    if (e20[-1] - e50[-1]) * d > 0 and (e20[-1] - e20[-4]) * d > 0:
+        sc += 1
+        why.append("trend")
+    r = rsi(C, 14)
+    rv, rp = r[-1], r[-3]
+    if rv is not None and rp is not None and ((d > 0 and (40 <= rv <= 68 and rv > rp or rv < 32)) or (d < 0 and (32 <= rv <= 60 and rv < rp or rv > 68))):
+        sc += 1
+        why.append("rsi")
+    m = [a - b for a, b in zip(ema_list(C, 12), ema_list(C, 26))]
+    sig = ema_list(m, 9)
+    h = [a - b for a, b in zip(m, sig)]
+    if h[-1] * d > 0 and (h[-1] - h[-2]) * d > 0:
+        sc += 1
+        why.append("macd")
+    hi = max(c["high"] for c in cs[-30:])
+    lo = min(c["low"] for c in cs[-30:])
+    pos = (C[-1] - lo) / (hi - lo) if hi > lo else 0.5
+    if (d > 0 and pos <= 0.65) or (d < 0 and pos >= 0.35):
+        sc += 1
+        why.append("levels")
+    return sc, why
 
 
 def features(cs, h=1):
@@ -326,8 +374,8 @@ def judge(ml):
 
 def rank(rows, mkt):
     """ai-analyst.js → rank(): BingX — сатып алуу гана (▲), BinoDex — ▲ жана ▼."""
-    ok = [x for x in rows if (x["dir"] != 0 if mkt == "binodex" else x["dir"] > 0)]
-    ok.sort(key=lambda x: (-abs(x["p"] - 0.5), -x["edge"]))
+    ok = [x for x in rows if (x["dir"] != 0 and x.get("ta", 0) >= TA_MIN if mkt == "binodex" else x["dir"] > 0)]
+    ok.sort(key=lambda x: (-x.get("ta", 0), -abs(x["p"] - 0.5), -x["edge"]))
     return ok[:3]
 
 
@@ -506,7 +554,8 @@ class Scanner:
 
     def row(self, base, name, mkt, d, ml, exp):
         edge, dr = judge(ml)
-        return {"base": base, "code": base[3:] if base.startswith("FX_") else None, "mkt": mkt, "name": name,
+        ta, why = ta_check(d["candles"], dr) if mkt == "binodex" else (4, [])
+        return {"ta": ta, "ta_why": why, "base": base, "code": base[3:] if base.startswith("FX_") else None, "mkt": mkt, "name": name,
                 "p": ml["p"], "acc": ml["acc"], "bl": ml["base"], "edge": edge, "dir": dr, "n": ml["n"], "nTest": ml["nTest"],
                 "entry": d["entry"], "t": d["t"], "provider": d["provider"], "iv": d["iv"], "h": d["h"], "exp": exp,
                 "_cs": [{"time": c["time"], "open": c["open"], "high": c["high"], "low": c["low"], "close": c["close"]} for c in d["candles"][-64:]]}
@@ -600,6 +649,8 @@ def msg_signal(sg, lang):
     if sg.get("dogon"):
         lines[0:0] = ["<b>%s</b>" % e(L["dg_head"])]
         lines.insert(5, "❗️ <i>%s</i>" % e(L["dg_note"]))
+    if fx and sg.get("ta_why"):
+        lines.append("📐 %s: <b>%d/4</b> ✓ %s" % (e(L["ta_w"]), sg.get("ta", 0), e(", ".join(L["ta_names"].get(w, w) for w in sg["ta_why"]))))
     if fx:
         lines += ["🎯 %s: <b>%s</b>" % (e(L["entry"]), money(sg["entry"], True)),
                   "⏱ %s: <b>%s → %s</b> (Бишкек)" % (e(L["time_w"]), hms(sg["t0"]), hms(sg["tEnd"])),
@@ -889,7 +940,16 @@ class Bot:
                     self.st["pending"] = [x for x in self.st["pending"] if x["id"] != sg["id"]]
                     self.st["history"].append(sg)
                     self.publish("result", sg)
-                    if sg["mkt"] == "binodex" and sg["res"] == 0 and not sg.get("dogon") and os.environ.get("TG_DOGON", "1") != "0":
+                    if sg["mkt"] == "binodex" and sg["res"] in (0, 1):
+                        self.st["streak"] = (self.st.get("streak", 0) + 1) if sg["res"] == 0 else 0
+                    if sg["mkt"] == "binodex" and sg["res"] == 0 and self.st.get("streak", 0) >= LOSS_STREAK:
+                        self.st["cool_until"] = now_ms() + COOL_MS           # катары менен минус — 3 мүн тыныгуу, анан эң мыкты 5 мүн
+                        self.st["streak"] = 0
+                        for sid in list(self.st.get("scan_t", {})):
+                            if sid.startswith("binodex:"):
+                                self.st["scan_t"][sid] = now_ms() + COOL_MS - scan_every("binodex", 5)   # тыныгуу бүтөөр замат скан
+                        print("  ⏸ %d минус катары менен — %d мүн тыныгуу" % (LOSS_STREAK, COOL_MS // 60000))
+                    elif sg["mkt"] == "binodex" and sg["res"] == 0 and not sg.get("dogon") and os.environ.get("TG_DOGON", "1") != "0":
                         self.dogon(sg)
             save_state(self.state_path, self.st)
         finally:
@@ -898,13 +958,26 @@ class Bot:
     def dogon(self, prev):
         """Минустан кийин бир гана жолу: ошол эле актив, ошол эле багыт, жаңы баа (мартингейл 1 кадам, эскертүү менен)."""
         sg = {k: v for k, v in prev.items() if k not in ("res", "exit", "tRes")}
-        try:
-            d = live_fx(sg["code"], sg["exp"], {})
-            sg["entry"], sg["t"], sg["provider"] = d["entry"], d["t"], d["provider"]
-            sg["_cs"] = [{"time": c["time"], "open": c["open"], "high": c["high"], "low": c["low"], "close": c["close"]} for c in d["candles"][-64:]]
-        except Exception as e:  # noqa: BLE001 — жаңы баа жок болсо догон жок
-            print("! догон %s: баа жок (%s)" % (sg["name"], str(e)[:60]))
+        best = None
+        for ex in (3, 2):                                  # перекрытие: 3 же 2 мүнөт — кайсынысы күчтүүрөөк ырастаса
+            try:
+                d = live_fx(sg["code"], ex, {})
+                ml = model(d["candles"], d["h"])
+                if not ml:
+                    continue
+                pd = ml["p"] if sg["dir"] > 0 else 1 - ml["p"]
+                ta, why = ta_check(d["candles"], sg["dir"])
+                if pd >= 0.52 and ta >= 2 and (best is None or (ta, pd) > (best[0], best[1])):
+                    best = (ta, pd, ex, d, ml, why)
+            except Exception as e:  # noqa: BLE001
+                print("! догон %s %d мүн: %s" % (sg["name"], ex, str(e)[:60]))
+        if not best:
+            print("  догон жок: %s — жаңы анализ багытты ырастабады" % sg["name"])
             return
+        ta, pd, ex, d, ml, why = best
+        sg.update(exp=ex, p=ml["p"], acc=ml["acc"], bl=ml["base"], ta=ta, ta_why=why, h=d["h"], iv=d["iv"])
+        sg["entry"], sg["t"], sg["provider"] = d["entry"], d["t"], d["provider"]
+        sg["_cs"] = [{"time": c["time"], "open": c["open"], "high": c["high"], "low": c["low"], "close": c["close"]} for c in d["candles"][-64:]]
         sg["dogon"] = 1
         sg["id"] = now_ms()
         sg["t0"] = sg["t"]
@@ -996,6 +1069,10 @@ class Bot:
         if not tops:
             return
         L, now = self.st["last"], now_ms()
+        if now < self.st.get("cool_until", 0):
+            tops = [c for c in tops if c["mkt"] != "binodex"]
+            if not tops:
+                return
         for c in sorted(tops, key=lambda x: (x["mkt"] == "binodex" and x.get("exp") != 5, -abs(x["p"] - 0.5), -x["edge"])):
             k = key_of(c)
             if k == L.get("key") and now - L.get("t", 0) < ANTISPAM_SAME:
@@ -1033,6 +1110,8 @@ class Bot:
         for mkt, exp in self.streams():
             waits.append(self.st["scan_t"].get("%s:%s" % (mkt, exp), 0) + scan_every(mkt, exp) - now)
         waits += [p["tEnd"] + 2000 - now for p in self.st["pending"]]
+        if self.st.get("cool_until", 0) > now:
+            waits.append(self.st["cool_until"] - now + 500)
         if SESSIONS.strip():
             cur, nx = session_at(now), next_session(now)
             waits += [x for x in ((cur[2] - now + 1000) if cur else None, (nx[1] - now + 1000) if nx else None) if x is not None]
@@ -1305,7 +1384,7 @@ def main():
     ap.add_argument("--dry-run", action="store_true", help="эч нерсе жөнөтпөйт, билдирүүлөрдү экранга чыгарат")
     ap.add_argument("--loop", action="store_true", help="токтобой иштөө (ПК / сервер)")
     ap.add_argument("--force", action="store_true", help="скан графигине карабай азыр сканерлөө")
-    ap.add_argument("--exp", default=os.environ.get("TG_EXP", "5,3,2"), help="BinoDex экспирациялары, мүнөт: 5,3,2 (демейки; 5 — негизги)")
+    ap.add_argument("--exp", default=os.environ.get("TG_EXP", "5"), help="BinoDex экспирациясы, мүнөт (демейки 5; догон — 3/2 өзү)")
     ap.add_argument("--markets", default=os.environ.get("TG_MARKETS", "binodex,bingx"), help="binodex,bingx")
     ap.add_argument("--lang", default=os.environ.get("TG_LANG", "kg"), choices=["kg", "ru"])
     ap.add_argument("--state", default=os.environ.get("TG_STATE", ""), help="абал файлы (демейки tools/tg_state.json)")

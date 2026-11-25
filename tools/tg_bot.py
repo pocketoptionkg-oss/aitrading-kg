@@ -2143,7 +2143,7 @@ def main():
     ap = argparse.ArgumentParser(description="AITRADING.KG Telegram-бот")
     ap.add_argument("--setup", action="store_true", help="бир жолу туташтыруу (Telegram + BingX API)")
     ap.add_argument("--no-signals", action="store_true", help="сигнал сканерисиз")
-    ap.add_argument("--exp", default=os.environ.get("TG_EXP", "5,3,2"), help="BinoDex экспирациялары: 5,3,2 (5 — негизги)")
+    ap.add_argument("--exp", default=os.environ.get("TG_EXP", "5"), help="BinoDex экспирациясы: 5 (догон — 3/2 өзү)")
     ap.add_argument("--lang", default=os.environ.get("TG_LANG", "kg"), choices=["kg", "ru"])
     a = ap.parse_args()
     if a.setup:
