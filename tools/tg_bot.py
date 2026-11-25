@@ -589,6 +589,11 @@ def binodex_status():
     return "✓ OAuth (вход через BinoDex)" if oauth_ready() else "❌ OAuth не настроен (BINODEX_CLIENT_ID / LINK_SECRET)"
 
 
+def mask_wa(wa):
+    wa = str(wa or "")
+    return (wa[:7] + "•••" + wa[-2:]) if len(wa) > 9 else "•••"
+
+
 def link_sig(msg, n):
     raw = hmac.new(link_secret().encode(), msg.encode(), hashlib.sha256).digest()
     return base64.urlsafe_b64encode(raw).decode().rstrip("=")[:n]
@@ -672,6 +677,8 @@ class App:
         if re.match(r"^\d+$", chat):
             ids.append(chat)
         self.admins = {int(x) for x in ids if re.match(r"^\d+$", x)}
+        own = (os.environ.get("TG_OWNER_ID") or (chat if re.match(r"^\d+$", chat) else "")).strip()
+        self.owner = int(own) if re.match(r"^\d+$", own) else (min(self.admins) if self.admins else None)
         self.channel = chat if chat.startswith("-") or chat.startswith("@") else None
         self.exp = exp or [1]
         self.engine = None
@@ -948,8 +955,7 @@ class App:
             lid = "bot-%d" % uid
             self.db.x("INSERT OR IGNORE INTO leads(id,t,wa,name,broker,lang,page,country,src,tg_id) VALUES(?,?,?,?,?,?,?,?,?,?)",
                       (lid, S.now_ms(), wa, u.get("first_name") or "", "", u.get("lang") or "kg", "bot", "", "bot", uid))
-            self.notify_admins("📱 <b>Жаңы WhatsApp</b> (бот): %s · %s" % (E(wa), self.user_link(u)),
-                               ik([[("💬 WhatsApp", "https://wa.me/" + wa.lstrip("+"))]]))
+            self.lead_note(lid, "бот", "%s · %s" % (E(mask_wa(wa)), self.user_link(u)))
             return self.send(uid, T(u, "wa_ok"), ik([[("BingX", "reg:bingx"), ("BinoDex", "reg:binodex")]]))
         if step.startswith("id:"):
             b = step[3:]
@@ -1102,6 +1108,8 @@ class App:
             if not self.is_admin(uid):
                 return None
             return self.on_admin_cb(u, data, msg)
+        if data.startswith("nb:"):
+            return self.notebook(uid, data, msg)
         if data.startswith("chset:") and self.is_admin(uid):
             _, kind, rest = data.split(":", 2)
             cid, _, th = rest.partition(":")
@@ -1170,14 +1178,14 @@ class App:
             "✓" if self.bingx.ok() else "ачкыч жок (кол менен)", binodex_status(), "⏸ токтотулган" if paused else ("▶️ иштеп жатат" if self.engine else "өчүк (--no-signals)"))
         kb = ik([[("📣 Рассылка", "adm:bc"), ("🧾 Заявкалар (%d)" % pend, "adm:queue")],
                  [("👥 Трейдерлер", "adm:users"), ("📊 Статистика", "adm:stats")],
-                 [("▶️ Сигналдарды улантуу" if paused else "⏸ Сигналдарды токтотуу", "adm:sig")]])
+                 [("▶️ Сигналдарды улантуу" if paused else "⏸ Сигналдарды токтотуу", "adm:sig")]] + ([[("📒 Блокнот заявок", "nb:p:0")]] if u["id"] == self.owner else []))
         if mid:
             return self.edit(u["id"], mid, text, kb)
         return self.send(u["id"], text, kb)
 
     def card(self, t):
         bal = (" · %.2f USDT" % t["balance"]) if t.get("balance") is not None else ""
-        bal += (" · WA %s" % E(t["wa"])) if t.get("wa") else ""
+        bal += (" · WA %s" % E(mask_wa(t["wa"]))) if t.get("wa") else ""
         return "%s · %s · %s <code>%s</code>%s · кирген: %d күн мурун" % (
             self.user_link(t), TX["kg"]["st"].get(t["status"], t["status"]), E(t.get("broker") or "—"), E(t.get("trader_id") or "—"), bal, ago_days(t.get("last_seen")))
 
@@ -1689,6 +1697,55 @@ class App:
         else:
             self.db.kv_set("lead_tg:" + lid, u["id"])         # заявка али келе элек — кийин байланат
 
+    def lead_note(self, lid, where, line):
+        """Жаңы заявка — ээсине гана, номер маска менен."""
+        if not self.owner:
+            return None
+        return self.send(self.owner, "📱 <b>Новая заявка WhatsApp</b> (%s): %s" % (where, line),
+                         ik([[("👁 Показать номер", "nb:v:%s" % lid), ("📒 Блокнот", "nb:p:0")]]))
+
+    def notebook(self, uid, data, msg):
+        """📒 Блокнот: ээсинин гана. Тизмеде маска; «👁» — толук номер 60 секундга, анан билдирүү өчөт."""
+        if uid != self.owner:
+            return None
+        parts = data.split(":")
+        if parts[1] == "v" and len(parts) > 2:
+            ld = self.db.one("SELECT * FROM leads WHERE id=?", (re.sub(r"[^0-9a-z-]", "", parts[2])[:20],))
+            if not ld:
+                return self.send(uid, "Заявка не найдена.")
+            r = self.send(uid, "🔒 <b>%s</b> · %s\n<code>%s</code>\n<i>Сообщение удалится через 60 секунд.</i>" % (
+                E(ld.get("name") or "—"), E(S.hms(ld.get("t") or S.now_ms(), False)), E(ld["wa"])),
+                ik([[("💬 WhatsApp", "https://wa.me/" + ld["wa"].lstrip("+"))]]))
+            if r and r.get("message_id"):
+                import threading
+                t = threading.Timer(60, lambda: self.api("deleteMessage", {"chat_id": uid, "message_id": r["message_id"]}))
+                t.daemon = True
+                t.start()
+            return True
+        page = max(0, int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 0)
+        tot = (self.db.one("SELECT COUNT(*) n FROM leads") or {}).get("n", 0)
+        rows = self.db.q("SELECT * FROM leads ORDER BY t DESC LIMIT 8 OFFSET ?", (page * 8,))
+        lines = ["📒 <b>Блокнот заявок</b> · всего %d (видите только вы)" % tot]
+        kb = []
+        for i, ld in enumerate(rows, 1 + page * 8):
+            br = {"bingx": "BingX", "binodex": "BinoDex"}.get(ld.get("broker"), "—")
+            day = S.datetime.fromtimestamp((ld.get("t") or 0) / 1000, S.BISHKEK).strftime("%d.%m %H:%M") if ld.get("t") else "—"
+            lines.append("%d. %s · %s · %s · %s%s" % (i, E(mask_wa(ld["wa"])), E(ld.get("name") or "—"), br, day, " · TG ✓" if ld.get("tg_id") else ""))
+            kb.append(("👁 %d" % i, "nb:v:%s" % ld["id"]))
+        rows_kb = [kb[j:j + 4] for j in range(0, len(kb), 4)]
+        nav = []
+        if page > 0:
+            nav.append(("⬅️", "nb:p:%d" % (page - 1)))
+        if (page + 1) * 8 < tot:
+            nav.append(("➡️", "nb:p:%d" % (page + 1)))
+        if nav:
+            rows_kb.append(nav)
+        if not rows:
+            lines.append("Пока пусто.")
+        mid = msg.get("message_id") if parts[1] == "p" and msg.get("text", "").startswith("📒") else None
+        text = "\n".join(lines)
+        return self.edit(uid, mid, text, ik(rows_kb)) if mid else self.send(uid, text, ik(rows_kb) if rows_kb else None)
+
     def pull_leads(self):
         if not link_secret():
             return 0
@@ -1713,10 +1770,9 @@ class App:
                 if tu and not tu.get("wa"):
                     self.db.upd(tg, wa=wa)
             br = {"bingx": "BingX", "binodex": "BinoDex"}.get(it.get("broker"), "—")
-            self.notify_admins("📱 <b>Жаңы WhatsApp</b> (сайт): %s%s · %s · %s%s" % (
-                E(wa), (" · " + E(it.get("name"))) if it.get("name") else "", br, E(it.get("page") or ""),
-                (" · " + E(it.get("country"))) if it.get("country") else ""),
-                ik([[("💬 WhatsApp", "https://wa.me/" + wa.lstrip("+"))]]))
+            self.lead_note(lid, "сайт", "%s%s · %s · %s%s" % (
+                E(mask_wa(wa)), (" · " + E(it.get("name"))) if it.get("name") else "", br, E(it.get("page") or ""),
+                (" · " + E(it.get("country"))) if it.get("country") else ""))
             self.db.kv_set("leads_after", lid)
             time.sleep(0.05)
         return len(items)
