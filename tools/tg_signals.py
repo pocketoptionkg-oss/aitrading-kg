@@ -57,7 +57,7 @@ FX_DEFAULT = [("EURUSD", "EUR/USD"), ("GBPUSD", "GBP/USD"), ("AUDUSD", "AUD/USD"
 POP = ["BTC", "ETH", "SOL", "XRP", "BNB", "DOGE", "TON", "ADA", "AVAX", "LINK", "SUI", "NEAR", "TAO", "FET", "PEPE", "PAXG"]
 
 ANTISPAM_ANY = 3 * 60000      # 3 мүнөттө 1 билдирмеден көп эмес
-ANTISPAM_SAME = 15 * 60000    # ошол эле сунуш — 15 мүнөттө 1 жолу
+ANTISPAM_SAME = 8 * 60000     # ошол эле сунуш (жуп+багыт) — 8 мүнөттө 1 жолу (5 мүн сигнал жабылгандан кийин)
 LOSS_STREAK = int(os.environ.get("TG_LOSS_STREAK", "3"))   # ушунча минус катары менен болсо — тыныгуу
 COOL_MS = int(os.environ.get("TG_COOL_MIN", "3")) * 60000
 SESSIONS = os.environ.get("TG_SESSIONS", "08:00-11:00,19:00-close")   # BinoDex соода сессиялары (Бишкек); close — рынок жабылганда; бош — күнү-түнү
@@ -219,7 +219,7 @@ def ema_list(a, n):
     return out
 
 
-TA_MIN = int(os.environ.get("TG_TA_MIN", "2"))     # 4 текшерүүнүн канчасы багытты ырасташы керек
+TA_MIN = int(os.environ.get("TG_TA_MIN", "0"))     # 0 — сайттагыдай (ИИ эң мыктысы); тех. анализ тартипти жана себептерди гана берет
 
 
 def ta_check(cs, d):
@@ -870,7 +870,7 @@ def scan_every(mkt, exp):
     """ai-analyst.js → scanEvery(): 1–3 мүн → 60 с, 5–15 мүн → 2 мүн, андан узун → 5 мүн; BingX → 10 мүн."""
     if mkt != "binodex":
         return 600000
-    return 60000 if exp <= 3 else 120000 if exp <= 15 else 300000
+    return 60000 if exp <= 15 else 300000
 
 
 class Bot:
