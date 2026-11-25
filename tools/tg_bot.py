@@ -826,7 +826,8 @@ class App:
             here = (gch.get("id"), th)
             linked = [(self.db.kv("ch:" + k), self.db.kv("th:" + k)) for k in ("bingx", "binodex")]
             gk = "gask:%s:%s" % (gch.get("id"), th or 0)
-            if gid and self.is_admin(gid) and here not in linked and not self.db.kv(gk):
+            cmd = (m.get("text") or "").strip().lower().split("@")[0]
+            if gid and self.is_admin(gid) and (cmd == "/link" or (cmd in ("тест", "test") and here not in linked)):
                 self.db.kv_set(gk, 1)
                 return self.ask_channel(gid, gch, th)
             return None
