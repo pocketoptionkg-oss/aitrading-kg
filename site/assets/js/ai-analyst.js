@@ -34,7 +34,7 @@
     this.tf = root.getAttribute("data-tf") || "1h";
     this.speed = this.mode === "hero" ? 0.62 : 0.75;
     this.baseSpeed = this.speed;
-    this.exp = 1;          // сигналдын экспирациясы (мүнөт), BinoDex бөлүмү
+    this.exp = 5;          // сигналдын экспирациясы (мүнөт), BinoDex бөлүмү — демейки 5 мүн (автордун тажрыйбасы)
     this.auto = false;
     this.sigTimer = null;
     this.run_id = 0;

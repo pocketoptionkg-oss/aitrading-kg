@@ -219,7 +219,7 @@ def ema_list(a, n):
     return out
 
 
-TA_MIN = int(os.environ.get("TG_TA_MIN", "3"))     # 4 текшерүүнүн канчасы багытты ырасташы керек
+TA_MIN = int(os.environ.get("TG_TA_MIN", "2"))     # 4 текшерүүнүн канчасы багытты ырасташы керек
 
 
 def ta_check(cs, d):
