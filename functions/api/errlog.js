@@ -3,8 +3,17 @@
    GET  /api/errlog?after=<id>   окуу: башы X-Key = ERRLOG_READ_KEY (автордун компьютериндеги tools/pull_errors.py)
    Сакталат: LEADS_KV, ачкыч err:<убакыт36>-<кокус>, 30 күн. */
 import { json, sign, same } from "../../server/sign.js";
+import { idxAdd, idxAfter } from "../../server/kvidx.js";
 
 export async function onRequest(context) {
+  try {
+    return await handle(context);
+  } catch (e) {
+    return json({ error: "exception", detail: String((e && e.message) || e).slice(0, 300) }, 500);
+  }
+}
+
+async function handle(context) {
   const { request, env } = context;
   if (!env.LEADS_KV || !env.LINK_SECRET) return json({ error: "config" }, 503);
 
@@ -22,6 +31,7 @@ export async function onRequest(context) {
     const id = Date.now().toString(36).padStart(9, "0") + "-" + Math.random().toString(36).slice(2, 7);
     item.id = id;
     await env.LEADS_KV.put("err:" + id, JSON.stringify(item), { expirationTtl: 30 * 86400 });
+    await idxAdd(env.LEADS_KV, "err", id);
     return json({ ok: true, id });
   }
 
@@ -29,16 +39,8 @@ export async function onRequest(context) {
     const rk = String(env.ERRLOG_READ_KEY || "").trim();   // wrangler stdin аркылуу жаңы сап кошулуп калышы мүмкүн
     if (!rk || !same((request.headers.get("x-key") || "").trim(), rk)) return json({ error: "forbidden" }, 403);
     const after = new URL(request.url).searchParams.get("after") || "";
-    const ids = [];
-    let cursor;
-    do {
-      const page = await env.LEADS_KV.list({ prefix: "err:", cursor, limit: 1000 });
-      for (const k of page.keys) { const id = k.name.slice(4); if (id > after) ids.push(id); }
-      cursor = page.list_complete ? null : page.cursor;
-    } while (cursor);
-    ids.sort();
     const items = [];
-    for (const id of ids.slice(0, 50)) {
+    for (const id of await idxAfter(env.LEADS_KV, "err", after, 50)) {
       const v = await env.LEADS_KV.get("err:" + id);
       if (v) { try { items.push(JSON.parse(v)); } catch (e) { /* */ } }
     }
