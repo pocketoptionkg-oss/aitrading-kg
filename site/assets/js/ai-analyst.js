@@ -167,6 +167,8 @@
     });
     /* ⭐ тизмесинен же карточкадагы сунуштан активди ачуу */
     r.addEventListener("click", function (e) {
+      var more = e.target.closest && e.target.closest("[data-more]");
+      if (more) { AT.track("best_more", { market: self.mkt }); if (!self.scanning) self.scan(); return; }
       var b = e.target.closest && e.target.closest("[data-pick]");
       if (!b) return;
       AT.track("best_pick", { asset: b.getAttribute("data-pick"), market: self.mkt });
@@ -251,7 +253,7 @@
   /* Канча убакытта бир жаңыртуу: 1–3 мүн → 60 с, 5–15 мүн → 2 мүн, андан узун → 5 мүн; BingX (1 саат) → 10 мүн */
   Analyst.prototype.scanEvery = function () {
     if (this.mkt !== "binodex") return 600000;
-    return this.exp <= 3 ? 60000 : this.exp <= 15 ? 120000 : 300000;
+    return this.exp <= 15 ? 60000 : 300000;
   };
   Analyst.prototype.scanSoon = function (ms) {
     var self = this;
@@ -307,7 +309,8 @@
       self.renderBest();
       self.updateBestRow();
       self.notifyBest();
-      self.scanSoon();
+      self.nextScanAt = Date.now() + (self.best.top.length ? self.scanEvery() : 30000);
+      self.scanSoon(self.nextScanAt - Date.now());
     }
     next();
   };
@@ -335,8 +338,21 @@
       el.bestList.innerHTML = '<p class="best-wait"><i class="best-spin" aria-hidden="true"></i>' + esc(fmt(T("aia.best_scan"), { n: this.scanCands().length || "…" })) + "</p>";
       return;
     }
+    var moreBtn = '<button type="button" class="btn btn-ghost btn-sm best-more" style="margin:8px 0 4px" data-more' + (this.scanning ? " disabled" : "") + ">🔎 " + esc(T("aia.best_more")) + "</button>";
     if (!B.top.length) {
-      el.bestList.innerHTML = '<p class="best-none">' + esc(fmt(T(fx ? "aia.best_none_fx" : "aia.best_none"), { n: B.n })) + "</p>";
+      var left = Math.max(0, Math.round(((this.nextScanAt || 0) - Date.now()) / 1000));
+      el.bestList.innerHTML = '<p class="best-none">' + esc(fmt(T(fx ? "aia.best_none_fx" : "aia.best_none"), { n: B.n })) + "</p>" +
+        '<p class="best-none" data-next>' + esc(this.scanning ? T("aia.best_again_now") : fmt(T("aia.best_again"), { s: left })) + "</p>" + moreBtn;
+      clearInterval(this.nextT);
+      if (!this.scanning) {
+        var self2 = this;
+        this.nextT = setInterval(function () {
+          var n = el.bestList.querySelector("[data-next]");
+          var l = Math.max(0, Math.round(((self2.nextScanAt || 0) - Date.now()) / 1000));
+          if (!n || self2.scanning) { clearInterval(self2.nextT); return; }
+          n.textContent = l > 0 ? fmt(T("aia.best_again"), { s: l }) : T("aia.best_again_now");
+        }, 1000);
+      }
       return;
     }
     var lk = gateLocked();
@@ -350,7 +366,7 @@
         '<small class="best-acc">' + esc(fmt(T("aia.best_acc"), { a: pct(x.acc), b: pct(x.bl) })) + "</small>" +
         (cur ? '<small class="best-cur">' + esc(T("aia.best_open")) + "</small>" : '<span class="best-go" aria-hidden="true">→</span>') +
         "</button>";
-    }).join("") + '<p class="best-note">' + esc(T("aia.best_note")) + "</p>";
+    }).join("") + moreBtn + '<p class="best-note">' + esc(T("aia.best_note")) + "</p>";
   };
   /* Сигнал/прогноз карточкасынын аталышынын астындагы «⭐ эң мыкты» сабы */
   Analyst.prototype.bestRow = function () {
