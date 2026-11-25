@@ -1423,7 +1423,7 @@ class App:
             time.sleep(0.04)
         chan = self.db.kv("ch:" + sg.get("mkt", "")) or self.channel
         if chan:
-            lang = os.environ.get("TG_LANG", "kg")
+            lang = os.environ.get("TG_CH_LANG", "ru")
             if deliver(chan, lang, S.msg_signal(sg, lang) if kind == "signal" else S.msg_result(sg, hist, lang)):
                 sent += 1
         print("  → %s: %d алуучу" % ("сигнал" if kind == "signal" else "жыйынтык", sent))
@@ -1563,7 +1563,7 @@ class App:
 
     # ---------- BingX фьючерс сигналдары ----------
     def fut_publish(self, kind, tr, extra):
-        lang = os.environ.get("TG_LANG", "kg")
+        lang = os.environ.get("TG_CH_LANG", "ru")                # каналдар — орусча (автордун өтүнүчү)
         chan = self.db.kv("ch:bingx")
         targets = [chan] if chan else [a for a in self.admins]          # канал жок болсо — админге көрүү үчүн
         for chat in targets:
