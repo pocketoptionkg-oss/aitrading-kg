@@ -616,6 +616,15 @@ def site_access_url(tg_id, path="/forecast.html"):
     return "%s%s#acc=%s.%s.%s" % (S.SITE_URL, path, tg36, exp36, link_sig("acc|%s|%s" % (tg36, exp36), 22))
 
 
+def app_url(u, admin=False):
+    """Mini App шилтемеси: доступу барларга ?acc=<кол коюлган токен> (сайттагы access.js текшерет)."""
+    base = S.SITE_URL + "/forecast.html"
+    if (admin or u.get("status") == "active") and link_secret():
+        tg36, exp36 = b36(u["id"]), b36(int(time.time()) + SITE_ACCESS_DAYS * 86400)
+        return "%s?acc=%s.%s.%s" % (base, tg36, exp36, link_sig("acc|%s|%s" % (tg36, exp36), 22))
+    return base
+
+
 def oauth_url(tg_id):
     """BinoDex'ке кирүү шилтемеси. state — ушул Telegram колдонуучусуна байланган жана кол коюлган."""
     tg36, ts36 = b36(tg_id), b36(int(time.time()))
@@ -776,6 +785,18 @@ class App:
     def is_admin(self, uid):
         return uid in self.admins
 
+    def menu_btn(self, u, force=False):
+        """Ар бир колдонуучунун «Меню» ордуна — Mini App баскычы. Токен 7 күн: 3 күндө бир же статус өзгөргөндө жаңыртылат."""
+        uid = u["id"]
+        st = "a" if (u.get("status") == "active" or self.is_admin(uid)) else "f"
+        k = "mb:%d" % uid
+        old = self.db.kv(k) or ""
+        if not force and old.startswith(st + ":") and time.time() - int(old.split(":")[1]) < 3 * 86400:
+            return None
+        self.db.kv_set(k, "%s:%d" % (st, int(time.time())))
+        return self.api("setChatMenuButton", {"chat_id": uid, "menu_button": {
+            "type": "web_app", "text": "📱 AITRADING", "web_app": {"url": app_url(u, self.is_admin(uid))}}})
+
     def user_link(self, u):
         name = E(u.get("first_name") or "") or "user"
         at = ("@%s " % E(u["username"])) if u.get("username") else ""
@@ -838,6 +859,10 @@ class App:
         src = start_arg[:32] if start_arg and not start_arg.startswith("bx_") else None
         u = self.ensure_user(m["from"], src)
         uid = u["id"]
+        try:
+            self.menu_btn(u)
+        except Exception as e:  # noqa: BLE001 — меню баскычы милдеттүү эмес
+            print("! menu_btn: %s" % e)
         fo = m.get("forward_origin") or {}
         fch = (fo.get("chat") if fo.get("type") == "channel" else None) or m.get("forward_from_chat")
         if fch and fch.get("type") == "channel" and self.is_admin(uid):
@@ -899,7 +924,10 @@ class App:
         if act == "profile":
             return self.show_profile(u)
         if act == "site":
-            return self.send(uid, T(u, "site"), ik([[(T(u, "btn_site"), S.SITE_URL + "/")]]))
+            self.menu_btn(u, force=True)
+            return self.send(uid, T(u, "site"), {"inline_keyboard": [
+                [{"text": "📱 Открыть в Telegram" if (u.get("lang") == "ru") else "📱 Telegram ичинде ачуу", "web_app": {"url": app_url(u, self.is_admin(uid))}}],
+                [{"text": T(u, "btn_site"), "url": S.SITE_URL + "/"}]]})
         if act == "support":
             self.db.upd(uid, step="support")
             return self.send(uid, T(u, "support"))

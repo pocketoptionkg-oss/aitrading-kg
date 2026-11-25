@@ -215,10 +215,24 @@
         }
       }).catch(function () { /* тармак жок — кийин кайра текшерилет */ });
   }
+  // Telegram Mini App (боттогу «📱 Приложение»): толук экран + Telegram'дын скрипти
+  function initTelegram() {
+    if (!/tgWebApp/.test(location.hash + location.search) && !window.TelegramWebviewProxy) return;
+    document.documentElement.classList.add("in-tg");
+    var s = document.createElement("script");
+    s.src = "https://telegram.org/js/telegram-web-app.js";
+    s.onload = function () {
+      try { var w = window.Telegram.WebApp; w.ready(); w.expand(); } catch (e) { /* */ }
+    };
+    document.head.appendChild(s);
+  }
   function initAccess() {
-    var m = /[#&]acc=([0-9a-z]+\.[0-9a-z]+\.[A-Za-z0-9_-]{22})/.exec(location.hash);
+    initTelegram();
+    var m = /[#&?]acc=([0-9a-z]+\.[0-9a-z]+\.[A-Za-z0-9_-]{22})/.exec(location.search + location.hash);
     if (m) {
-      try { history.replaceState(null, "", location.pathname + location.search); } catch (e) { /* */ }
+      var q = location.search.replace(/([?&])acc=[^&]*&?/, "$1").replace(/[?&]$/, "");
+      var h = /acc=/.test(location.hash) ? "" : location.hash;
+      try { history.replaceState(null, "", location.pathname + q + h); } catch (e) { /* */ }
       verify(m[1], false);
       return;
     }
