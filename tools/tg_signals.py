@@ -60,7 +60,7 @@ ANTISPAM_ANY = 3 * 60000      # 3 мүнөттө 1 билдирмеден көп
 ANTISPAM_SAME = 8 * 60000     # ошол эле сунуш (жуп+багыт) — 8 мүнөттө 1 жолу (5 мүн сигнал жабылгандан кийин)
 LOSS_STREAK = int(os.environ.get("TG_LOSS_STREAK", "3"))   # ушунча минус катары менен болсо — тыныгуу
 COOL_MS = int(os.environ.get("TG_COOL_MIN", "3")) * 60000
-SESSIONS = os.environ.get("TG_SESSIONS", "08:00-11:00,19:00-close")   # BinoDex соода сессиялары (Бишкек); close — рынок жабылганда; бош — күнү-түнү
+SESSIONS = os.environ.get("TG_SESSIONS", "09:00-12:00,20:00-23:00")   # BinoDex соода сессиялары (Бишкек); close — рынок жабылганда; бош — күнү-түнү
 
 T = {
     "kg": {
