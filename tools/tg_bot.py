@@ -722,6 +722,12 @@ class App:
                                    exp=self.exp, markets={"binodex"} | ({"bingx"} if os.environ.get("TG_SPOT_BINGX") == "1" else set()),
                                    force=False, verbose=False)   # BingX — фьючерс гана (tg_futures); спот: TG_SPOT_BINGX=1
             self.engine = Engine(a, self)
+        try:                                              # автор тандаган сессиялар (/hours → ✅) — kv'де
+            ov = self.db.kv("sessions")
+            if ov:
+                S.SESSIONS = ov
+        except Exception:  # noqa: BLE001
+            pass
         self.username = None
         self.news = N.NewsDesk(self, enabled=news)
         self.market = MK.MarketDesk(self, self.news) if (MK is not None and news) else None
@@ -974,6 +980,8 @@ class App:
             return self.on_step(u, m, text)
         if u.get("step") and (cmd or text in ACTIONS):
             u = self.db.upd(uid, step=None)
+        if cmd in ("/hours", "/saat") and self.is_admin(uid):
+            return self.hours_msg(uid)
         if cmd in ("/kanal", "/channels") and self.is_admin(uid):
             return self.adm_channels(u)
         act = CMDS.get(cmd) if cmd else ACTIONS.get(text)
@@ -1260,6 +1268,15 @@ class App:
             if not self.is_admin(uid):
                 return None
             return self.on_admin_cb(u, data, msg)
+        if data.startswith("hrs:") and self.is_admin(uid):
+            spec = data[4:]
+            if spec == "keep":
+                return self.send(uid, "👌 Сессии оставлены как есть: %s" % E(S.SESSIONS))
+            if re.match(r"^\d\d:00-\d\d:00(,\d\d:00-\d\d:00)?$", spec):
+                self.db.kv_set("sessions", spec)
+                S.SESSIONS = spec
+                return self.send(uid, "✅ Новые сессии BinoDex: <b>%s</b> (Бишкек). Начало и итог каждой сессии бот пришлёт как обычно." % E(spec.replace(",", " и ")))
+            return None
         if data.startswith("nb:"):
             return self.notebook(uid, data, msg)
         if data.startswith("pt:"):
@@ -1691,8 +1708,27 @@ class App:
     # ======================================================================
     #  Фондогу жумуштар: 40 күн эрежеси, BingX балансын жаңыртуу
     # ======================================================================
+    def hours_msg(self, chat, auto=False):
+        if not self.engine:
+            return self.send(chat, "Сканер сигналов выключен.")
+        txt, win = S.hours_report(self.engine.st, "ru")
+        txt += "\n\nСейчас сессии: <b>%s</b>" % E(S.SESSIONS)
+        rows = []
+        if win:
+            spec = ",".join("%02d:00-%02d:00" % (a, b) for a, b, _, _ in win)
+            rows.append([("✅ Поставить: " + spec.replace(",", " и "), "hrs:" + spec)])
+        rows.append([("Оставить как есть", "hrs:keep")])
+        if auto:
+            txt = "🗓 <b>Неделя прошла — итоги по часам</b>\n\n" + txt
+        return self.send(chat, txt, ik(rows))
+
     def maintenance(self):
         now = S.now_ms()
+        if self.engine and self.owner:                    # 7 күндүк маалымат чогулса — ээсине отчет (жумасына бир)
+            since = self.engine.st.get("hours_since") or now
+            if now - since >= 7 * DAY and now - int(self.db.kv("hours_rep") or 0) >= 7 * DAY:
+                self.db.kv_set("hours_rep", now)
+                self.hours_msg(self.owner, auto=True)
         for u in self.db.q("SELECT * FROM users WHERE status='active' AND broker<>'admin'"):
             d = ago_days(u["last_seen"])
             if d >= ACCESS_DAYS:

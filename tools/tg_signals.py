@@ -886,6 +886,60 @@ def next_session(ms):
     return None
 
 
+SHADOW_EVERY = 5 * 60000      # сессиядан тышкары: 5 мүнөттө бир «көлөкө» текшерүү (каналга жөнөтүлбөйт)
+WIN_H = 3                      # сунушталган сессиянын узундугу, саат
+
+
+def hour_of(ms):
+    return datetime.fromtimestamp(ms / 1000, BISHKEK).hour
+
+
+def best_windows(hours, min_n=12, k=2, width=WIN_H):
+    """hours: {"HH": [плюс, минус]} → эң жогорку тактыктагы k терезе (кесилишпейт). [(башы, аягы, %, n)]"""
+    rows = []
+    for h in range(24):
+        w = sum((hours.get("%02d" % ((h + i) % 24)) or [0, 0])[0] for i in range(width))
+        l = sum((hours.get("%02d" % ((h + i) % 24)) or [0, 0])[1] for i in range(width))
+        if w + l >= min_n:
+            rows.append((w / (w + l), w + l, h))
+    rows.sort(reverse=True)
+    out = []
+    for pc, n, h in rows:
+        span = {(h + i) % 24 for i in range(width)}
+        if any(span & {(o[0] + i) % 24 for i in range(width)} for o in out):
+            continue
+        out.append((h, (h + width) % 24, pc, n))
+        if len(out) >= k:
+            break
+    return sorted(out)
+
+
+def hours_report(st, lang="ru"):
+    hours = st.get("hours") or {}
+    since = st.get("hours_since") or now_ms()
+    days = max(0, (now_ms() - since) / 86400000)
+    ru = lang == "ru"
+    lines = [("📊 <b>Сигналы по часам</b> · %.1f дн. данных (Бишкек)" if ru else "📊 <b>Сигналдар саат боюнча</b> · %.1f күн (Бишкек)") % days,
+             ("<i>В сессиях — реальные сигналы, вне сессий — тихая проверка (никому не отправлялась).</i>" if ru
+              else "<i>Сессияда — чыныгы сигналдар, сессиядан тышкары — тынч текшерүү (эч кимге жөнөтүлгөн жок).</i>"), ""]
+    for h in range(24):
+        w, l = (hours.get("%02d" % h) or [0, 0])[:2]
+        if w + l == 0:
+            continue
+        pc = round(w / (w + l) * 100)
+        bar = "🟩" if pc >= 60 else "🟨" if pc >= 50 else "🟥"
+        lines.append("%s %02d:00 — %d%% (%d✓ %d✗)" % (bar, h, pc, w, l))
+    win = best_windows(hours)
+    lines.append("")
+    if win:
+        lines.append(("🏆 <b>Лучшие окна (по %d ч):</b>" if ru else "🏆 <b>Эң мыкты убакыттар (%d саат):</b>") % WIN_H)
+        for a, b, pc, n in win:
+            lines.append("• %02d:00–%02d:00 — %d%% (%d сигн.)" % (a, b, round(pc * 100), n))
+    else:
+        lines.append("⏳ Данных пока мало — нужно хотя бы по 12 сигналов на окно." if ru else "⏳ Маалымат аз — ар бир терезеге кеминде 12 сигнал керек.")
+    return "\n".join(lines), win
+
+
 def scan_every(mkt, exp):
     """ai-analyst.js → scanEvery(): 1–3 мүн → 60 с, 5–15 мүн → 2 мүн, андан узун → 5 мүн; BingX → 10 мүн."""
     if mkt != "binodex":
@@ -958,6 +1012,9 @@ class Bot:
                             sg["res"] = 2 if px == sg["entry"] else 1 if (px > sg["entry"]) == (sg["dir"] > 0) else 0
                     sg["tRes"] = now
                     self.st["pending"] = [x for x in self.st["pending"] if x["id"] != sg["id"]]
+                    self.hour_add(sg)
+                    if sg.get("shadow"):
+                        continue                                  # тынч текшерүү: жөнөтүлбөйт, догон/катар жок
                     self.st["history"].append(sg)
                     self.publish("result", sg)
                     if sg["mkt"] == "binodex" and sg["res"] in (0, 1):
@@ -974,6 +1031,36 @@ class Bot:
             save_state(self.state_path, self.st)
         finally:
             self.resolving = False
+
+    def hour_add(self, sg):
+        if sg.get("mkt") != "binodex" or sg.get("res") not in (0, 1):
+            return
+        hs = self.st.setdefault("hours", {})
+        self.st.setdefault("hours_since", now_ms())
+        k = "%02d" % hour_of(sg["t0"])
+        v = hs.get(k) or [0, 0]
+        v[0 if sg["res"] == 1 else 1] += 1
+        hs[k] = v
+
+    def shadow_tick(self, sc):
+        """Сессиядан тышкары: эң мыкты 5 мүн сигналды тынч жазып алат (жөнөтүлбөйт) — саат статистикасы үчүн."""
+        if not SESSIONS.strip() or "binodex" not in self.args.markets or session_at(now_ms()):
+            return
+        if now_ms() - self.st.get("shadow_t", 0) < SHADOW_EVERY:
+            return
+        self.st["shadow_t"] = now_ms()
+        try:
+            rows, _ = sc.binodex(5)
+        except Exception as e:  # noqa: BLE001
+            print("! shadow: %s" % str(e)[:80])
+            return
+        top = rank(rows, "binodex")
+        if not top:
+            return
+        sg = dict(top[0])
+        sg.pop("_cs", None)
+        sg.update(shadow=1, id=now_ms(), t0=sg["t"], tEnd=sg["t"] + 5 * 60000, res=None, exit=None)
+        self.st["pending"].append(sg)
 
     def dogon(self, prev):
         """Минустан кийин бир гана жолу: ошол эле актив, ошол эле багыт, жаңы баа (мартингейл 1 кадам, эскертүү менен)."""
@@ -1009,6 +1096,14 @@ class Bot:
             self.st["pending"].append(sg)
             self.st["last"] = {"key": key_of(sg), "t": now_ms()}
 
+    def hours_seed(self):
+        if self.st.get("hours") is not None:
+            return
+        self.st["hours"] = {}
+        for sg in self.st.get("history") or []:
+            self.hour_add(sg)
+        self.st["hours_since"] = now_ms()            # толук сутка (тынч текшерүү менен) ушул учурдан башталат
+
     def session_tick(self):
         if not SESSIONS.strip():
             return
@@ -1023,7 +1118,7 @@ class Bot:
                 if now - a < 30 * 60000:                  # бот кеч иштеп калса — «башталды» жазылбайт
                     self.publish("session_open", info)
             elif now >= b and ph == "open":
-                late = [x for x in self.st["pending"] if x["mkt"] == "binodex" and x["t0"] < b + 20 * 60000]
+                late = [x for x in self.st["pending"] if x["mkt"] == "binodex" and not x.get("shadow") and x["t0"] < b + 20 * 60000]
                 if late and now < b + 30 * 60000:
                     continue                              # акыркы сигналдардын жыйынтыгын күтөт
                 ss[sid] = "closed"
@@ -1041,12 +1136,14 @@ class Bot:
         return out
 
     def run_once(self):
+        self.hours_seed()
         self.resolve_due()
         self.session_tick()
         if self.bx is None or now_ms() - self.bx.get("_t", 0) > 3600000:
             self.bx = load_bx()
             self.bx["_t"] = now_ms()
         sc = Scanner(self.bx, self.lang, self.args.verbose, idle=self.resolve_due)
+        self.shadow_tick(sc)
         cand = self.st.setdefault("cand", {})
         for mkt, exp in self.streams():                  # BinoDex (кыска экспирация) биринчи, BingX акырында
             sid = "%s:%s" % (mkt, exp)
@@ -1130,6 +1227,8 @@ class Bot:
         for mkt, exp in self.streams():
             waits.append(self.st["scan_t"].get("%s:%s" % (mkt, exp), 0) + scan_every(mkt, exp) - now)
         waits += [p["tEnd"] + 2000 - now for p in self.st["pending"]]
+        if SESSIONS.strip() and not session_at(now):
+            waits.append(self.st.get("shadow_t", 0) + SHADOW_EVERY - now + 500)
         if self.st.get("cool_until", 0) > now:
             waits.append(self.st["cool_until"] - now + 500)
         if SESSIONS.strip():
