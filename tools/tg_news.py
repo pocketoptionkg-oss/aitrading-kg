@@ -44,8 +44,8 @@ FEED_TICK_S = 600                  # жаңылык агымы — ар 10 мү�
 FRESH_MAX_AGE_MS = 6 * 3600 * 1000 # мындан эски жаңылык «жаңы» эмес (бот кайра иштегенде эскилери чыкпайт)
 HOT_MAX_AGE_MS = 90 * 60 * 1000    # «шашылыш» пост — жаңылык 90 мүнөттөн эски болбосо гана
 TOP_MAX_AGE_MS = 6 * 3600 * 1000
-POST_GAP_MS = 20 * 60 * 1000       # автоматтык жаңылык посттордун ортосу (hot'тон башкасы)
-DAY_CAP = 6                        # күнүнө ≤6 автоматтык жаңылык посту (анонстор өзүнчө)
+POST_GAP_MS = 90 * 60 * 1000       # автоматтык жаңылык посттордун ортосу (hot'тон башкасы) — күнгө жайылсын
+DAY_CAP = 5                        # күнүнө ≤5 маанилүү жаңылык (автордун өтүнүчү: 3–5); анонстор өзүнчө
 DIGEST_H = 8                       # 08:00 Бишкек — бүгүнкү анонстор
 REMIND_MIN = 15                    # маанилүү окуядан ~15 мүнөт мурун эскертүү
 CAL_REFRESH_S = 1800
@@ -219,7 +219,10 @@ def news_msg(x, lang, both=False):
     lvl = x.get("imp") if x.get("imp") in NEWS_HEAD else "top"
     cat = CAT_NAME.get(x.get("cat"))
     tps = [TOPIC_NAME[t] for t in (x.get("tp") or []) if t in TOPIC_NAME][:2]
-    if both:
+    if x.get("who_ru"):                    # белгилүү адамдын сөзү
+        head = "🗣 <b>%s</b>" % E(x["who_ky"] + (" · " + x["who_ru"] if x["who_ru"] != x["who_ky"] else "") if both else (x["who_ru"] if l == "ru" else x["who_ky"]))
+        body = (["🇰🇬 " + news_block(x, "kg"), "", "🇷🇺 " + news_block(x, "ru")] if x.get("ky") else [news_block(x, "ru")]) if both else [news_block(x, l)]
+    elif both:
         head = NEWS_HEAD[lvl][2] + (" · %s" % E(cat[0] if cat[0] == cat[1] else cat[0] + " / " + cat[1]) if cat else "")
         body = ["🇰🇬 " + news_block(x, "kg"), "", "🇷🇺 " + news_block(x, "ru")] if x.get("ky") else [news_block(x, "ru")]
     else:
@@ -533,9 +536,12 @@ class NewsDesk:
                     and (x.get("lang", "ru") == "ru" or x.get("ru")))          # англисчеси — котормосу болсо гана
         hot = [x for x in new if x.get("imp") == "hot" and x["kind"] in ("main", "opinions") and ok(x, HOT_MAX_AGE_MS)]
         top = [x for x in items if x.get("imp") == "top" and x["kind"] == "main" and ok(x, TOP_MAX_AGE_MS)]
-        if not hot and (not top or now - st.get("last", 0) < POST_GAP_MS):
+        # Рынокко таасир эткен белгилүү адамдардын сөздөрү (Трамп, Пауэлл, Маск, Сэйлор…) — маанилүү катары
+        ops = [x for x in items if x["kind"] == "opinions" and ok(x, TOP_MAX_AGE_MS)]
+        pool = top + ops
+        if not hot and (not pool or now - st.get("last", 0) < POST_GAP_MS):
             return None
-        x = (hot or sorted(top, key=lambda y: (-(y.get("n") or 1), -y["t"])))[0]
+        x = (hot or sorted(pool, key=lambda y: (-(y.get("n") or 1) - (1 if y["kind"] == "opinions" else 0), -y["t"])))[0]
         res = self.post_news(x)
         posted.update(NF.member_ids(x))
         self.db.kv_set("nf_posted", list(posted)[-600:])
