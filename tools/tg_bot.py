@@ -34,6 +34,10 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import tg_signals as S  # noqa: E402
+try:                                                  # YouTube-план жана эскертмелер (ээсине)
+    import tg_coach as COACH  # noqa: E402
+except Exception:  # noqa: BLE001
+    COACH = None
 try:                                                  # ИИ-жардамчы (дожим + жооптор)
     import tg_agent as AG  # noqa: E402
 except Exception:  # noqa: BLE001
@@ -980,6 +984,10 @@ class App:
             return self.on_step(u, m, text)
         if u.get("step") and (cmd or text in ACTIONS):
             u = self.db.upd(uid, step=None)
+        if cmd in ("/plan", "/youtube") and self.is_admin(uid) and COACH is not None:
+            import time as _t
+            items = self.coach().refresh(_t.time())
+            return self.send(uid, COACH.plan_text(items, _t.time()) if items else "Не удалось прочитать канал YouTube, попробуйте позже.")
         if cmd in ("/hours", "/saat") and self.is_admin(uid):
             return self.hours_msg(uid)
         if cmd in ("/kanal", "/channels") and self.is_admin(uid):
@@ -2108,6 +2116,21 @@ class App:
                 self.report_err("agent", e)
             time.sleep(900)
 
+    def coach(self):
+        if not hasattr(self, "_coach"):
+            self._coach = COACH.Coach(self)
+        return self._coach
+
+    def loop_coach(self):
+        """YouTube-план: 10 мүнөттө бир текшерүү, эскертмелер ээсине гана."""
+        time.sleep(120)
+        while True:
+            try:
+                self.coach().tick()
+            except Exception as e:  # noqa: BLE001
+                print("! coach: %s" % self.tg.redact(e))
+            time.sleep(600)
+
     def loop_leads(self):
         while True:
             try:
@@ -2153,6 +2176,8 @@ class App:
             threading.Thread(target=self.loop_signals, daemon=True).start()
         threading.Thread(target=self.loop_maint, daemon=True).start()
         threading.Thread(target=self.loop_leads, daemon=True).start()
+        if COACH is not None and os.environ.get("YT_COACH", "1") != "0":
+            threading.Thread(target=self.loop_coach, daemon=True).start()
         threading.Thread(target=self.partners.loop, daemon=True).start()
         if AG is not None and os.environ.get("TG_AGENT", "1") != "0":
             threading.Thread(target=self.loop_agent, daemon=True).start()
