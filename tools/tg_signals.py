@@ -76,7 +76,7 @@ T = {
         "honest": "Ыктымалдык — кепилдик эмес.",
         "risk_fx": "18+ · Кыска мөөнөттүү соода — эң тобокелдүү. Адегенде демо-эсепте текшериңиз.",
         "dg_head": "🔁 ПЕРЕКРЫТИЕ (догон) · 2-кирүү",
-        "dg_note": "Мурунку сигнал минус болду. Ушул эле багытта экинчи кирүү — сумма 2 эседен ашпасын. Догон тобокелди көбөйтөт: жоготууга даяр болбосоңуз, кирбеңиз.",
+        "dg_note": "Мурунку сигнал минус болду — ушул эле багытта кайра киребиз. Сумма — биринчисинен 2 эседен ашпасын.",
         "dg_res": "перекрытие",
         "ta_w": "Тех. анализ", "ta_names": {"trend": "тренд", "rsi": "RSI", "macd": "MACD", "levels": "деңгээлдер"},
         "ss_open": "СООДА СЕССИЯСЫ №{n} БАШТАЛДЫ", "ss_close": "СООДА СЕССИЯСЫНЫН ЖЫЙЫНТЫГЫ №{n}",
@@ -110,7 +110,7 @@ T = {
         "honest": "Это вероятность, а не гарантия.",
         "risk_fx": "18+ · Краткосрочная торговля — самая рискованная. Сначала проверьте на демо-счёте.",
         "dg_head": "🔁 ПЕРЕКРЫТИЕ (догон) · вход №2",
-        "dg_note": "Прошлый сигнал ушёл в минус. Второй вход в ту же сторону — сумма не больше 2× от первой. Догон увеличивает риск: не входите, если не готовы потерять эту сумму.",
+        "dg_note": "Прошлый сигнал ушёл в минус — заходим ещё раз в ту же сторону. Сумма — не больше 2× от первой.",
         "dg_res": "перекрытие",
         "ta_w": "Тех. анализ", "ta_names": {"trend": "тренд", "rsi": "RSI", "macd": "MACD", "levels": "уровни"},
         "ss_open": "ТОРГОВАЯ СЕССИЯ №{n} НАЧАЛАСЬ", "ss_close": "ИТОГ ТОРГОВОЙ СЕССИИ №{n}",
@@ -672,7 +672,7 @@ def msg_signal(sg, lang):
              "%s %s: <b>%s</b> · %s <b>%s</b>" % ("📈" if up else "📉", e(L["dir_w"]), dir_txt(sg, L), e(L["prob_w"]), dp)]
     if sg.get("dogon"):
         lines[0:0] = ["<b>%s</b>" % e(L["dg_head"])]
-        lines.insert(5, "❗️ <i>%s</i>" % e(L["dg_note"]))
+        lines.insert(5, "🔁 %s" % e(L["dg_note"]))
     if fx and sg.get("ta_why"):
         lines.append("📐 %s: <b>%d/4</b> ✓ %s" % (e(L["ta_w"]), sg.get("ta", 0), e(", ".join(L["ta_names"].get(w, w) for w in sg["ta_why"]))))
     if fx:
@@ -685,8 +685,7 @@ def msg_signal(sg, lang):
                   "🕐 " + e(L["bx_line"]),
                   "🧠 %s: %s" % (e(L["model_w"]), e(acc)),
                   "📡 " + e(L["quote_bx"].format(p=sg["provider"]))]
-    lines += [LINE, '👉 <a href="%s">%s</a>' % (e(link(sg)), e(L["open"])),
-              "⚠️ <i>%s %s</i>" % (e(L["honest"]), e(L["risk_fx"] if fx else L["risk_bx"]))]
+    lines += [LINE, '👉 <a href="%s">%s</a>' % (e(link(sg)), e(L["open"]))]
     return "\n".join(lines)
 
 
@@ -719,7 +718,6 @@ def msg_result(sg, hist, lang):
     s = stats_line(hist, lang)
     if s:
         lines.append("📊 " + e(s))
-    lines.append("<i>%s</i>" % e(L["honest"]))
     return "\n".join(lines)
 
 
@@ -735,8 +733,7 @@ def msg_session(kind, info, hist, lang):
     if kind == "session_open":
         lines = ["🔔 <b>%s</b>" % e(L["ss_open"].format(n=info["n"])), LINE, "🕗 <b>%s</b>" % rng,
                  "⚡ " + e(L["ss_l1"].format(exp=" / ".join(map(str, info.get("exp") or [5])))),
-                 "🔁 " + e(L["ss_l2"]), "📌 " + e(L["ss_l3"]), LINE,
-                 "⚠️ <i>%s %s</i>" % (e(L["honest"]), e(L["risk_fx"]))]
+                 "🔁 " + e(L["ss_l2"]), "📌 " + e(L["ss_l3"])]
         return "\n".join(lines)
     xs, w, l, t = session_stats(info, hist)
     lines = ["🏁 <b>%s</b>" % e(L["ss_close"].format(n=info["n"])), LINE, "🕗 %s · %s" % (datetime.fromtimestamp(info["t0"] / 1000, BISHKEK).strftime("%d.%m"), rng)]
@@ -752,7 +749,6 @@ def msg_session(kind, info, hist, lang):
     nx = next_session(info["tEnd"] + 1000)
     if nx:
         lines += [LINE, "⏭ " + e(L["ss_next"].format(t=hms(nx[1], False)))]
-    lines.append("<i>%s</i>" % e(L["honest"]))
     return "\n".join(lines)
 
 

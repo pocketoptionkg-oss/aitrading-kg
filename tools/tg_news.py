@@ -153,23 +153,21 @@ RULE = {
     "kg": "Эреже: {n} ири монетанын медианасы 24 саатта ±{a}% же 1 саатта ±{b}% (Binance, запасы BingX).",
     "ru": "Правило: медиана {n} крупнейших монет за 24 ч ±{a}% или за 1 ч ±{b}% (Binance, запасной — BingX).",
 }
-HEAD = {"kg": "⚠️ <b>ШАШЫЛЫШ · AITRADING.KG</b>", "ru": "⚠️ <b>СРОЧНО · AITRADING.KG</b>"}
+HEAD = {"kg": "⚡ <b>Шашылыш</b>", "ru": "⚡ <b>Срочно</b>"}
 NEWS_BTN = {"kg": ("📰 Жаңылыктар жана анонстор: 🔔 күйүк", "📰 Жаңылыктар жана анонстор: 🔕 өчүк"),
             "ru": ("📰 Новости и анонсы: 🔔 вкл", "📰 Новости и анонсы: 🔕 выкл")}
 
 
 def market_msg(a, p, lang, site):
     l = "ru" if lang == "ru" else "kg"
-    rule = RULE[l].format(n=p["n"] if p else 10, a=("%g" % p["th24"]) if p else 5, b=("%g" % p["th1h"]) if p else 3)
-    check = "Текшерүү" if l == "kg" else "Проверить"
-    return "%s\n\n%s\n\n%s\n%s: <a href=\"%s\">TradingView</a> · <a href=\"%s/news.html#pulse\">AITRADING.KG</a>\n\n%s" % (
-        HEAD[l], E(a["ky"] if l == "kg" else a["ru"]), E(rule), check, a.get("verify") or MP.VERIFY_URL, site, FOOT[l])
+    return "%s\n\n%s\n\n📊 <a href=\"%s\">TradingView</a> · <a href=\"%s/news.html#pulse\">AITRADING.KG</a>" % (
+        HEAD[l], E(a["ky"] if l == "kg" else a["ru"]), a.get("verify") or MP.VERIFY_URL, site)
 
 
 def urgent_msg(d, lang, site):
     l = "ru" if lang == "ru" else "kg"
     src = ("\n🔗 <a href=\"%s\">%s</a>" % (E(d["url"]), "Булак" if l == "kg" else "Источник")) if d.get("url") else ""
-    return "%s\n\n%s%s\n\n📰 <a href=\"%s/news.html\">AITRADING.KG</a>\n\n%s" % (HEAD[l], E(d["ky"] if l == "kg" else d["ru"]), src, site, FOOT[l])
+    return "%s\n\n%s%s\n\n📰 <a href=\"%s/news.html\">AITRADING.KG</a>" % (HEAD[l], E(d["ky"] if l == "kg" else d["ru"]), src, site)
 
 
 def tweet_msg(d, lang):
@@ -181,7 +179,7 @@ def tweet_msg(d, lang):
         lines += ["", "🇰🇬 " + E(d["ky"])]
     if d.get("ru") and d.get("ru") != d.get("text"):
         lines += ["🇷🇺 " + E(d["ru"])]
-    lines += ["", "🔗 " + E(d["url"]), "", "Бул — анын жеке пикири, сунуш эмес." if l == "kg" else "Это его/её личное мнение, не рекомендация."]
+    lines += ["", "🔗 " + E(d["url"])]
     return "\n".join(lines)
 
 
@@ -189,8 +187,8 @@ def tweet_msg(d, lang):
 CAT_NAME = {"crypto": ("Крипто", "Крипто"), "fx": ("Валюта, алтын", "Валюта, золото"), "stock": ("Акциялар", "Акции")}
 TOPIC_NAME = {"move": ("рынок кыймылы", "движения рынка"), "etf": ("ETF", "ETF"), "reg": ("жөнгө салуу", "регулирование"),
               "tech": ("технология", "технологии"), "macro": ("макроэкономика", "макроэкономика")}
-NEWS_HEAD = {"hot": ("⚡ <b>ШАШЫЛЫШ ЖАҢЫЛЫК</b>", "⚡ <b>СРОЧНАЯ НОВОСТЬ</b>", "⚡ <b>ШАШЫЛЫШ · СРОЧНО</b>"),
-             "top": ("🔥 <b>МААНИЛҮҮ ЖАҢЫЛЫК</b>", "🔥 <b>ВАЖНАЯ НОВОСТЬ</b>", "🔥 <b>МААНИЛҮҮ · ВАЖНО</b>")}
+NEWS_HEAD = {"hot": ("⚡ <b>Шашылыш</b>", "⚡ <b>Срочно</b>", "⚡ <b>Шашылыш · Срочно</b>"),
+             "top": ("🔥 <b>Маанилүү</b>", "🔥 <b>Важно</b>", "🔥 <b>Маанилүү · Важно</b>")}
 NEWS_FOOT = {"kg": "ℹ️ Жаңылык — маалымат үчүн, соода сунушу эмес. Чоң жаңылыкта баа бир нече мүнөттө кескин өзгөрүшү мүмкүн.",
              "ru": "ℹ️ Новость — для информации, не торговая рекомендация. На крупных новостях цена может резко измениться за минуты."}
 FLAG = {"USD": "🇺🇸", "EUR": "🇪🇺", "GBP": "🇬🇧", "JPY": "🇯🇵", "CNY": "🇨🇳", "CHF": "🇨🇭", "CAD": "🇨🇦", "AUD": "🇦🇺", "NZD": "🇳🇿"}
@@ -238,7 +236,7 @@ def news_msg(x, lang, both=False):
     foot = NEWS_FOOT["kg"] if (both or l == "kg") else NEWS_FOOT["ru"]
     if both and x.get("ky"):
         foot = NEWS_FOOT["kg"] + "\n" + NEWS_FOOT["ru"]
-    return "\n".join([head, ""] + body + ["", src] + ([tag] if tag else []) + ["", foot])
+    return "\n".join([head, ""] + body + ["", src] + ([tag] if tag else []))
 
 
 def news_kb(x, lang, site, both=False):
@@ -278,13 +276,12 @@ def cal_digest_msg(evs, lang, site, both=False):
     l = "ru" if lang == "ru" else "kg"
     day = dt.datetime.now(BISHKEK).strftime("%d.%m")
     if both:
-        head = "📅 <b>БҮГҮНКҮ АНОНСТОР · АНОНСЫ НА СЕГОДНЯ</b>\n%s · убакыт Бишкек боюнча / время бишкекское" % day
-        foot = ("⚠️ Ушул убакта баа кескин кыймылдашы мүмкүн — жаңы баштагандарга соода ачпай күтүү коопсузураак.\n"
-                "⚠️ В это время цена может резко двигаться — новичкам безопаснее не открывать сделки.")
+        head = "📅 <b>Бүгүнкү окуялар · События сегодня</b>\n%s · Бишкек" % day
+        foot = "🔥 Бул мүнөттөрдө рынок жанданат · В эти минуты рынок оживает"
     elif l == "ru":
-        head, foot = "📅 <b>ВАЖНЫЕ АНОНСЫ НА СЕГОДНЯ</b>\n%s · время бишкекское" % day, "⚠️ В это время цена может резко двигаться — новичкам безопаснее не открывать сделки."
+        head, foot = "📅 <b>Важные события сегодня</b>\n%s · время бишкекское" % day, "🔥 В эти минуты рынок оживает — будьте готовы."
     else:
-        head, foot = "📅 <b>БҮГҮНКҮ МААНИЛҮҮ АНОНСТОР</b>\n%s · убакыт Бишкек боюнча" % day, "⚠️ Ушул убакта баа кескин кыймылдашы мүмкүн — жаңы баштагандарга соода ачпай күтүү коопсузураак."
+        head, foot = "📅 <b>Бүгүнкү маанилүү окуялар</b>\n%s · убакыт Бишкек боюнча" % day, "🔥 Бул мүнөттөрдө рынок жанданат — даяр болуңуз."
     rows = "\n\n".join(cal_line(e, l, both) for e in evs)
     src = "Булак: Forex Factory · %s/news.html#calendar" % site
     return "%s\n\n%s\n\n%s\n%s" % (head, rows, foot, src)
@@ -295,12 +292,11 @@ def cal_remind_msg(evs, lang, site, both=False, now=None):
     m = max(1, round((evs[0]["t"] - (now or time.time() * 1000)) / 60000))
     if both:
         head = "⏰ <b>%d МҮНӨТТӨН КИЙИН · ЧЕРЕЗ %d МИН</b> · %s (Бишкек)" % (m, m, hhmm(evs[0]["t"]))
-        foot = ("Чыккан маанини TradingView'дон караңыз. Жаңы баштагандарга ушул убакта соода ачпай туруу коопсузураак.\n"
-                "Факт смотрите на TradingView. Новичкам безопаснее не открывать сделки в эти минуты.")
+        foot = "Чыккан маанини TradingView'дон караңыз · Факт — на TradingView"
     elif l == "ru":
-        head, foot = "⏰ <b>ЧЕРЕЗ %d МИН</b> · %s (Бишкек)" % (m, hhmm(evs[0]["t"])), "Факт смотрите на TradingView. Новичкам безопаснее не открывать сделки в эти минуты."
+        head, foot = "⏰ <b>ЧЕРЕЗ %d МИН</b> · %s (Бишкек)" % (m, hhmm(evs[0]["t"])), "Факт смотрите на TradingView."
     else:
-        head, foot = "⏰ <b>%d МҮНӨТТӨН КИЙИН</b> · %s (Бишкек)" % (m, hhmm(evs[0]["t"])), "Чыккан маанини TradingView'дон караңыз. Жаңы баштагандарга ушул убакта соода ачпай туруу коопсузураак."
+        head, foot = "⏰ <b>%d МҮНӨТТӨН КИЙИН</b> · %s (Бишкек)" % (m, hhmm(evs[0]["t"])), "Чыккан маанини TradingView'дон караңыз."
     rows = "\n\n".join(cal_line(e, l, both) for e in evs)
     return "%s\n\n%s\n\n%s\n%s" % (head, rows, foot, "https://ru.tradingview.com/economic-calendar/")
 
