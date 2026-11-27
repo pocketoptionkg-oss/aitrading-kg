@@ -516,23 +516,71 @@
     document.querySelectorAll("[data-year]").forEach(function (el) { el.textContent = new Date().getFullYear(); });
   }
 
-  /* ---------- Соцтармактар (config.js → SOCIAL) ---------- */
-  function initSocial() {
-    var names = { youtube: "YouTube", telegram: "Telegram", instagram: "Instagram", tiktok: "TikTok" };
+  /* ---------- Соцтармактар (config.js → SOCIAL): футерде иконкалар + «Жазылыңыз» блогу ---------- */
+  var SOC_ICON = {
+    youtube: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M23 7.2a3 3 0 0 0-2.1-2.1C19 4.6 12 4.6 12 4.6s-7 0-8.9.5A3 3 0 0 0 1 7.2 31 31 0 0 0 .5 12a31 31 0 0 0 .5 4.8 3 3 0 0 0 2.1 2.1c1.9.5 8.9.5 8.9.5s7 0 8.9-.5a3 3 0 0 0 2.1-2.1 31 31 0 0 0 .5-4.8 31 31 0 0 0-.5-4.8zM9.7 15.1V8.9l5.8 3.1-5.8 3.1z"/></svg>',
+    telegram: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21.9 4.3 18.6 19.8c-.2 1.1-.9 1.4-1.8.9l-5-3.7-2.4 2.3c-.3.3-.5.5-1 .5l.4-5.1 9.3-8.4c.4-.4-.1-.6-.6-.2L6 13.3l-5-1.6c-1.1-.3-1.1-1.1.2-1.6L20.4 2.7c.9-.3 1.7.2 1.5 1.6z"/></svg>',
+    instagram: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 8.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4zM17.3 5.5a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4zM12 2.2c-2.7 0-3 0-4 .1-1 0-1.8.2-2.4.5-.7.3-1.2.6-1.8 1.2-.6.6-.9 1.1-1.2 1.8-.3.6-.5 1.4-.5 2.4-.1 1-.1 1.3-.1 4s0 3 .1 4c0 1 .2 1.8.5 2.4.3.7.6 1.2 1.2 1.8.6.6 1.1.9 1.8 1.2.6.3 1.4.5 2.4.5 1 .1 1.3.1 4 .1s3 0 4-.1c1 0 1.8-.2 2.4-.5.7-.3 1.2-.6 1.8-1.2.6-.6.9-1.1 1.2-1.8.3-.6.5-1.4.5-2.4.1-1 .1-1.3.1-4s0-3-.1-4c0-1-.2-1.8-.5-2.4a4.9 4.9 0 0 0-3-3c-.6-.3-1.4-.5-2.4-.5-1-.1-1.3-.1-4-.1zm0 1.8c2.6 0 2.9 0 4 .1.9 0 1.5.2 1.8.3.5.2.8.4 1.1.7.3.3.6.7.7 1.1.1.3.3.9.3 1.8.1 1 .1 1.4.1 4s0 2.9-.1 4c0 .9-.2 1.5-.3 1.8-.2.5-.4.8-.7 1.1-.3.3-.7.6-1.1.7-.3.1-.9.3-1.8.3-1 .1-1.4.1-4 .1s-2.9 0-4-.1c-.9 0-1.5-.2-1.8-.3a3 3 0 0 1-1.1-.7 3 3 0 0 1-.7-1.1c-.1-.3-.3-.9-.3-1.8-.1-1-.1-1.4-.1-4s0-2.9.1-4c0-.9.2-1.5.3-1.8.2-.5.4-.8.7-1.1.3-.3.7-.6 1.1-.7.3-.1.9-.3 1.8-.3 1-.1 1.4-.1 4-.1z"/></svg>',
+    tiktok: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16.6 2h-3.3v13.2a2.9 2.9 0 1 1-2.9-2.9c.3 0 .6 0 .9.1V9a6.3 6.3 0 1 0 5.3 6.2V8.6a7.9 7.9 0 0 0 4.4 1.4V6.7a4.6 4.6 0 0 1-4.4-4.7z"/></svg>'
+  };
+  var SOC_ORDER = ["youtube", "telegram", "instagram", "tiktok"];
+  var SOC_NAME = { youtube: "YouTube", telegram: "Telegram", instagram: "Instagram", tiktok: "TikTok" };
+  var SOC_TXT = {
+    ky: { title: "Бизди ээрчиңиз", sub: "Түз эфирлер, сигналдар, сабактар жана рыноктун жаңылыктары — ар күнү.",
+          youtube: "Түз эфирлер жана сабактар", telegram: "Сигналдар жана жаңылыктар", instagram: "Күнүмдүк постор жана сторис", tiktok: "Кыска видеолор" },
+    ru: { title: "Подписывайтесь", sub: "Прямые эфиры, сигналы, уроки и новости рынка — каждый день.",
+          youtube: "Прямые эфиры и уроки", telegram: "Сигналы и новости", instagram: "Посты и сторис каждый день", tiktok: "Короткие видео" }
+  };
+  function socLinks() {
     var social = CFG.SOCIAL || {};
+    return SOC_ORDER.filter(function (k) { return /^https:\/\//i.test(String(social[k] || "").trim()); })
+      .map(function (k) { return { k: k, u: String(social[k]).trim() }; });
+  }
+  function socBand() {
+    var L = SOC_TXT[lang === "ru" ? "ru" : "ky"], links = socLinks();
+    if (!links.length) return "";
+    return '<div class="container"><div class="soc-band-in"><div class="soc-band-head"><h2>' + L.title + "</h2><p>" + L.sub + "</p></div>" +
+      '<div class="soc-cards">' + links.map(function (x) {
+        return '<a class="soc-card soc-' + x.k + '" href="' + x.u + '" target="_blank" rel="noopener" data-track="social_' + x.k + '">' +
+          '<span class="soc-ico">' + SOC_ICON[x.k] + "</span><span><b>" + SOC_NAME[x.k] + "</b><small>" + L[x.k] + "</small></span></a>";
+      }).join("") + "</div></div></div>";
+  }
+  function initSocial() {
+    var links = socLinks();
     document.querySelectorAll("[data-social]").forEach(function (box) {
-      Object.keys(names).forEach(function (k) {
-        var u = String(social[k] || "").trim();
-        if (!/^https:\/\//i.test(u)) return;
+      box.innerHTML = "";
+      links.forEach(function (x) {
         var a = document.createElement("a");
-        a.href = u;
+        a.href = x.u;
         a.target = "_blank";
         a.rel = "noopener";
-        a.textContent = names[k];
+        a.className = "soc-" + x.k;
+        a.setAttribute("aria-label", SOC_NAME[x.k]);
+        a.innerHTML = SOC_ICON[x.k] + "<span>" + SOC_NAME[x.k] + "</span>";
         box.appendChild(a);
       });
       if (!box.children.length) box.hidden = true;
     });
+    if (!links.length) return;
+    // «Жазылыңыз» блогу: башкы бетте hero'дон кийин, калган беттерде футердин алдында
+    var spots = [];
+    var hero = document.querySelector("main > section.hero, section.hero");
+    if (hero) spots.push(["after", hero]);
+    var foot = document.querySelector("[data-site-footer]") || document.querySelector("footer");
+    if (foot && !hero) spots.push(["before", foot]);
+    spots.forEach(function (sp) {
+      var el = document.createElement("section");
+      el.className = "soc-band";
+      el.setAttribute("data-soc-band", "");
+      el.innerHTML = socBand();
+      if (sp[0] === "after") sp[1].parentNode.insertBefore(el, sp[1].nextSibling);
+      else sp[1].parentNode.insertBefore(el, sp[1]);
+    });
+    if (window.AT && AT.onLang) AT.onLang(function () { document.querySelectorAll("[data-soc-band]").forEach(function (b) { b.innerHTML = socBand(); }); });
+    document.addEventListener("click", function (e) {
+      var a = e.target.closest && e.target.closest("a.soc-card, [data-social] a");
+      if (a && window.AT && AT.track) AT.track("social_click", { to: (a.className.match(/soc-(\w+)/) || [])[1] || "" });
+    }, true);
   }
 
   /* ---------- TradingView виджеттери ---------- */

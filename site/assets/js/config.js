@@ -124,9 +124,9 @@ window.AITRADING_CONFIG = {
   /* Соцтармактар: шилтеме коюлса, футерде жана «Маркетинг» бетинде баскыч пайда болот.
      Соцсети: если вставить ссылку, появится кнопка в футере и на странице «Маркетинг». */
   SOCIAL: {
-    youtube: "",
-    telegram: "",
-    instagram: "",
-    tiktok: ""
+    youtube: "https://www.youtube.com/@TRADER_KG",
+    telegram: "https://t.me/+kGTaMnkOHGxjMjk6",
+    instagram: "https://www.instagram.com/kg.million_/",
+    tiktok: "https://www.tiktok.com/@manimenkg_official"
   }
 };
