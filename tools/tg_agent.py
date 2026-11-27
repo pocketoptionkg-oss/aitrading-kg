@@ -129,9 +129,10 @@ def reply(u, text, free_left, history=None):
 
 
 def due(state, now=None):
-    """state: {"n": жөнөтүлгөн саны, "t": акыркы убакыт (с), "off": 1}. Бишкек 10–20 саат аралыгында гана."""
+    """state: {"n": жөнөтүлгөн саны, "t": акыркы убакыт (с)}. Бишкек 10–20 саат аралыгында гана.
+    Мурдагы "off" белгиси эсепке алынбайт: эскертмелерди өчүрүү жок (FU_MAX / FU_EVERY чеги калат)."""
     now = now or time.time()
     h = datetime.fromtimestamp(now, BISHKEK).hour
-    if not 10 <= h < 20 or (state or {}).get("off"):
+    if not 10 <= h < 20:
         return False
     return (state or {}).get("n", 0) < FU_MAX and now - (state or {}).get("t", 0) >= FU_EVERY

@@ -1332,15 +1332,8 @@ class App:
             if u.get("verified_at"):                          # мурда админ ырастаган — кайра кирүү жетиштүү
                 return self.activate(u, "кайра кирди")
             return self.verify(u)
-        if data == "fu:off":
-            k = "fu:%d" % uid
-            try:
-                st = json.loads(self.db.kv(k) or "{}")
-            except ValueError:
-                st = {}
-            st["off"] = 1
-            self.db.kv_set(k, json.dumps(st))
-            return self.send(uid, "🔕 Хорошо, напоминаний больше не будет." if u.get("lang") == "ru" else "🔕 Макул, мындан ары эскертпейм.")
+        if data == "fu:off":                              # эски билдирүүлөрдөгү «Эскертпе» баскычы — эч нерсе өчүрбөйт
+            return None
         if data == "skipproof":
             if u.get("step") != "proof":
                 return None
@@ -2080,8 +2073,7 @@ class App:
             rows.append([("👤 Профиль", "menu:profile")])
         elif stg == "comeback":
             rows.append([("👤 Профиль", "menu:profile")])
-        rows.append([("🔕 Не напоминать" if ru else "🔕 Эскертпе", "fu:off")])
-        return ik(rows)
+        return ik(rows)                                   # «Эскертпе» баскычы жок — эскертмелерди өчүрүү каралган эмес
 
     def loop_agent(self):
         """2 күндө 1 жолу: катталуу/толуктоо бүтө электерге жеке эскертме (10:00–20:00 Бишкек)."""
