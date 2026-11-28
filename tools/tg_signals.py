@@ -850,6 +850,19 @@ def market_close_after(ta):
         return c if c > ta else c + timedelta(days=1)
 
 
+def fx_closed(ms=None):
+    """Форекс дем алышта жабык: жума 17:00 → жекшемби 17:00 (Нью-Йорк). Ошол убакта валюта сигналдары берилбейт
+    (Kraken дем алышта да соода кылат, бирок BinoDex'те ал убакта OTC гана — баалар башка)."""
+    ms = ms or now_ms()
+    try:
+        from zoneinfo import ZoneInfo
+        d = datetime.fromtimestamp(ms / 1000, ZoneInfo("America/New_York"))
+    except Exception:  # noqa: BLE001 — tzdata жок болсо UTC-5
+        d = datetime.fromtimestamp(ms / 1000, timezone(timedelta(hours=-5)))
+    wd, h = d.weekday(), d.hour
+    return (wd == 4 and h >= 17) or wd == 5 or (wd == 6 and h < 17)
+
+
 def sessions_today(ms):
     """[(n, башы_ms, аягы_ms)] — Бишкек убактысы боюнча ошол күндүн сессиялары."""
     day = datetime.fromtimestamp(ms / 1000, BISHKEK).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -1044,7 +1057,7 @@ class Bot:
 
     def shadow_tick(self, sc):
         """Сессиядан тышкары: эң мыкты 5 мүн сигналды тынч жазып алат (жөнөтүлбөйт) — саат статистикасы үчүн."""
-        if not SESSIONS.strip() or "binodex" not in self.args.markets or session_at(now_ms()):
+        if not SESSIONS.strip() or "binodex" not in self.args.markets or session_at(now_ms()) or fx_closed():
             return
         if now_ms() - self.st.get("shadow_t", 0) < SHADOW_EVERY:
             return
@@ -1114,6 +1127,9 @@ class Bot:
             info = {"id": sid, "n": n, "t0": a, "tEnd": b, "mkt": "binodex", "exp": sorted(self.args.exp, reverse=True)}
             ph = ss.get(sid)
             if a <= now < b and not ph:
+                if fx_closed(a):                      # дем алыш: сессия жок (башталды/жыйынтык жазылбайт)
+                    ss[sid] = "closed"
+                    continue
                 ss[sid] = "open"
                 if now - a < 30 * 60000:                  # бот кеч иштеп калса — «башталды» жазылбайт
                     self.publish("session_open", info)
@@ -1129,7 +1145,7 @@ class Bot:
 
     def streams(self):
         out = []
-        if "binodex" in self.args.markets and session_at(now_ms()):
+        if "binodex" in self.args.markets and session_at(now_ms()) and not fx_closed():
             out += [("binodex", e) for e in self.args.exp]
         if "bingx" in self.args.markets:
             out.append(("bingx", 60))

@@ -283,6 +283,12 @@
     var self = this, id = ++this.scan_id, mkt = this.mkt, exp = this.exp;
     var list = this.scanCands(), out = [], i = 0;
     clearTimeout(this.scanT);
+    if (mkt === "binodex" && AIENG.fxClosed && AIENG.fxClosed()) {   // дем алыш: валюта рыногу жабык
+      this.best = { mkt: mkt, exp: exp, t: Date.now(), n: 0, all: [], top: [], closed: true };
+      this.renderBest();
+      this.scanSoon(600000);
+      return;
+    }
     if (!list.length) return;
     this.scanning = true;
     this.el.best.setAttribute("data-st", "work");
@@ -340,6 +346,10 @@
       return;
     }
     var moreBtn = '<button type="button" class="btn btn-ghost btn-sm best-more" style="margin:8px 0 4px" data-more' + (this.scanning ? " disabled" : "") + ">🔎 " + esc(T("aia.best_more")) + "</button>";
+    if (B.closed) {
+      el.bestList.innerHTML = '<p class="best-none">🌙 ' + esc(T("aia.best_closed")) + "</p>";
+      return;
+    }
     if (!B.top.length) {
       var left = Math.max(0, Math.round(((this.nextScanAt || 0) - Date.now()) / 1000));
       el.bestList.innerHTML = '<p class="best-none">' + esc(fmt(T(fx ? "aia.best_none_fx" : "aia.best_none"), { n: B.n })) + "</p>" +

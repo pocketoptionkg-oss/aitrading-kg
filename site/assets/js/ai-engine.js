@@ -103,7 +103,16 @@
     // BinoDex API документациясы келгенде ушул жер толтурулат (endpoint, жооптун форматы).
     return Promise.reject(new Error("binodex-api-pending"));
   }
+  /* Форекс дем алышта жабык: жума 17:00 → жекшемби 17:00 (Нью-Йорк). Ошол убакта валюта сигналдары жок. */
+  function fxClosed() {
+    try {
+      var p = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", hour12: false }).formatToParts(new Date());
+      var wd = (p.filter(function (x) { return x.type === "weekday"; })[0] || {}).value, h = +((p.filter(function (x) { return x.type === "hour"; })[0] || {}).value) % 24;
+      return (wd === "Fri" && h >= 17) || wd === "Sat" || (wd === "Sun" && h < 17);
+    } catch (e) { return false; }
+  }
   function liveFX(code, expMin) {
+    if (fxClosed()) return Promise.reject(new Error("closed"));
     var L = liveInterval(expMin);
     var chain = [
       function () { return binodexCandles(code, L.iv).then(function (c) { return { c: c, provider: "BinoDex" }; }); },
@@ -314,5 +323,5 @@
     return res;
   }
 
-  window.AIENG = { load: load, analyze: analyze, sma: sma, bingx: bingx, snapshot: snapshot, source: source, liveFX: liveFX, livePrice: livePrice, hasLive: hasLive };
+  window.AIENG = { load: load, analyze: analyze, sma: sma, bingx: bingx, snapshot: snapshot, source: source, liveFX: liveFX, livePrice: livePrice, hasLive: hasLive, fxClosed: fxClosed };
 })();

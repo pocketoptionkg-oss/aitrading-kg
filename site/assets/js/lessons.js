@@ -18,7 +18,7 @@
   function isFile(u) { return /^(assets\/|\.\/|\/)?[^\s:]+\.(mp4|webm|mov)(\?.*)?$/i.test(u); }
   function vt(el, key) { el.setAttribute("data-vt", key); el.textContent = AT.t(key); return el; }
 
-  function slot(key) {
+  function slot(key, big) {
     var url = urlFor(key);
     var box = document.createElement("div");
     box.className = "vslot";
@@ -36,7 +36,7 @@
     var btn = document.createElement("button");
     btn.type = "button";
     btn.className = "vplay";
-    if (id) btn.style.backgroundImage = "url(https://i.ytimg.com/vi/" + id + "/hqdefault.jpg)";
+    if (id) btn.style.backgroundImage = "url(https://i.ytimg.com/vi/" + id + (big ? "/maxresdefault.jpg" : "/hqdefault.jpg") + ")";
     else btn.style.backgroundImage = "url(" + url.replace(/\.(mp4|webm|mov)(\?.*)?$/i, ".jpg") + ")";   // мукаба: видео менен бир аттуу .jpg
     btn.innerHTML = '<span class="vplay-ico" aria-hidden="true">▶</span>';
     btn.appendChild(vt(document.createElement("span"), "vid.play"));
@@ -94,7 +94,7 @@
       if (!h) return;
       var anchor = h;
       if (sec.hasAttribute("data-video")) {
-        anchor = slot(sec.getAttribute("data-video"));
+        anchor = slot(sec.getAttribute("data-video"), sec.classList.contains("lesson-feature"));
         h.insertAdjacentElement("afterend", anchor);
       }
       var intro = Array.prototype.filter.call(sec.children, function (c) { return c.tagName === "P"; });
@@ -124,7 +124,7 @@
       // Тил алмашса жана башка тилдеги видео бар болсо — ойноткучту алмаштырабыз
       document.querySelectorAll(".vslot[data-video-key]").forEach(function (old) {
         var key = old.getAttribute("data-video-key");
-        if (urlFor(key) !== old.getAttribute("data-video-url")) old.replaceWith(slot(key));
+        if (urlFor(key) !== old.getAttribute("data-video-url")) old.replaceWith(slot(key, !!old.closest(".lesson-feature")));
       });
     });
     devNote();
